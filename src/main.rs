@@ -18,6 +18,7 @@ trait Draw {
 
 
 
+
 impl Draw for Bezier {
     fn draw(&self, _context: &cairo::Context) {
         unimplemented!();
@@ -56,6 +57,8 @@ fn main() {
         .build();
 
     app.connect_activate(|app| {
+
+        let mut drag_start = Arc::new(Mutex::new(Point{x: 0.0, y: 0.0}));
 
         let mut b = Bezier::new(0.05);
         b.set_ctrl_point(Point{x: 50.0, y: 0.0}, 1);
@@ -106,16 +109,28 @@ fn main() {
         let view_drag_update = view_guard.clone();
         let bezier_drag = bezier.clone();
         let drag_selected = selected.clone();  
+        let drag_initial = drag_start.clone();
         d.connect_drag_update(move |a,cx ,cy| {
             if let Ok(selected) = drag_selected.lock() {
                 if let Some(selected) = *selected {
                     // move the control point                   
                     let mut b = bezier_drag.lock().unwrap();
-                    b.translate_point(cx as f32, cy as f32, selected);
-                    println!("[{:?} -> {:?}, {:?}]", a, cx, cy);
+                    let p = drag_initial.lock().unwrap();
+                    b.set_ctrl_point(Point{ x: p.x + cx as f32, y: p.y + cy as f32}, selected);
                     view_drag_update.lock().unwrap().queue_draw();
                 }
             }
+        });
+        // set the initial offset
+        let drag_begin = drag_start.clone();
+        d.connect_drag_begin(move | _g, x, y| {
+            let mut p = drag_begin.lock().unwrap();
+            p.x = x as f32;
+            p.y = y as f32;
+        });
+        // repaint on drag end and set selected to none
+        d.connect_drag_end(move | _g, x, y| {
+            println!("[{:?}, {:?}]", x, y);
         });
         window.show();
     });
