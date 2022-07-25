@@ -70,12 +70,14 @@ impl Bezier {
     pub fn set_ctrl_point(&mut self, p: Point, idx: usize) {
         assert!(idx<4);
         self.ctrl_point[idx] = p;
+        self.modified = true;
     }
 
     pub fn translate_point(&mut self, cx: f32, cy: f32, idx: usize) {
         assert!(idx < 4);
         self.ctrl_point[idx].x += cx;
         self.ctrl_point[idx].y += cy;
+        self.modified = true;
     }
 
     pub fn translate(&mut self, cx: f32, cy: f32) {
