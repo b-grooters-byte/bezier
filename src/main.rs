@@ -74,7 +74,7 @@ fn main() {
 
         let mut drag_start = Arc::new(Mutex::new(Point{x: 0.0, y: 0.0}));
 
-        let mut b = Bezier::new(0.05);
+        let mut b = Bezier::new(0.025);
         b.set_ctrl_point(Point{x: 50.0, y: 0.0}, 1);
         b.set_ctrl_point(Point{x: 100.0, y: 100.0}, 2);
         b.set_ctrl_point(Point{x: 150.0, y: 100.0}, 3);

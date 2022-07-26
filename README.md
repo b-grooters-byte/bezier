@@ -8,6 +8,28 @@ The control points may be manipulated using the mouse to click in the control
 point handle and dragging it around the window. A single control point may be
 selected at a time.
 
+### GTK4 Drag Operations
+The GTK4 implementation demonstrates drag-begin, drag-update, and drag-end 
+signals being managed by the application. We created a Bezier render structure
+to handle the render state and operations:
+
+```rust
+struct BezierRender {
+    bezier: Bezier,
+    selected: Option<usize>,
+}
+```
+The drag-begin and drag-end operations update the selected control point index and the drag-update updates the curve based on the changes to the selected control point.
+
+We implement the ```Draw``` trait for ```BezierRender``` with ```draw_mut``` implemented. We originally defined the trait with immutable and mutable draw 
+functions; however, this may be removed in future iterations.
+```rust
+impl Draw for BezierRender {
+    fn draw_mut(&mut self, ctx: &cairo::Context) {
+        ...
+    }
+}
+```
 
 
 ![GTK OSX control points](images/Bézier%20OSX.png)
