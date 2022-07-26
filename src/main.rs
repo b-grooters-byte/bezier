@@ -3,13 +3,13 @@ mod geometry;
 use std::sync::{Mutex, Arc};
 
 use geometry::Point;
-use gtk::ffi::GtkGestureDrag;
 use gtk::{prelude::*, DrawingArea};
 use gtk::{Application, ApplicationWindow};
 
 use crate::geometry::bezier::Bezier;
 
-const HANDLE_RADIUS: f32 = 8.0;
+const HANDLE_RADIUS: f32 = 5.0;
+const HANDLE_LINE_WIDTH: f64 = 1.0;
 
 trait Draw {
     fn draw(&self, context: &cairo::Context);
@@ -33,7 +33,7 @@ impl Draw for Bezier {
         }
         context.stroke().expect("Unable to draw");
         context.set_source_rgb(0.0, 0.75, 0.0);
-        context.set_line_width(1.5);
+        context.set_line_width(HANDLE_LINE_WIDTH);
         for p in self.ctrl_points() {
             context.arc(p.x as f64, p.y as f64, HANDLE_RADIUS as f64, 0.0, 6.28);
             context.stroke().expect("unable to draw to context");
