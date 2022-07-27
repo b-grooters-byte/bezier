@@ -1,7 +1,10 @@
 # bezier
-Direct2D demo application with Bézier curves. This is a simple example of 
-Bézier curves and GUI interaction. There is a GTK4 example and a Windows
-Direct2D example.
+Demo application with Bézier curves. This is a simple example of 
+Bézier curves and GUI interaction. There GTK4 and Windows
+Direct2D implementations.
+
+## Getting Started
+The [Rust GKT4 Book](https://gtk-rs.org/gtk4-rs/stable/latest/book/introduction.html) is an excellent starting point for building and running the GTK4 application. The GTK4 application has been built and tested on Windows 11 and OSX Monterey (version 12.4).
 
 ### Control Points
 The control points may be manipulated using the mouse to click in the control
