@@ -1,4 +1,3 @@
-mod geometry;
 
 use std::sync::{Mutex, Arc};
 
@@ -6,7 +5,7 @@ use geometry::Point;
 use gtk::{prelude::*, DrawingArea};
 use gtk::{Application, ApplicationWindow};
 
-use crate::geometry::bezier::Bezier;
+use geometry::bezier::Bezier;
 
 const HANDLE_RADIUS: f32 = 5.0;
 const HANDLE_LINE_WIDTH: f64 = 1.0;
@@ -72,7 +71,7 @@ fn main() {
 
     app.connect_activate(|app| {
 
-        let mut drag_start = Arc::new(Mutex::new(Point{x: 0.0, y: 0.0}));
+        let drag_start = Arc::new(Mutex::new(Point{x: 0.0, y: 0.0}));
 
         let mut b = Bezier::new(0.025);
         b.set_ctrl_point(Point{x: 50.0, y: 0.0}, 1);
@@ -103,7 +102,7 @@ fn main() {
         let g = gtk::GestureClick::new();
         view.add_controller(&g);
         let bezier_pressed = bezier.clone();
-        g.connect_pressed(move |p, i, x, y| {
+        g.connect_pressed(move |_g, _i, x, y| {
             let mut b = bezier_pressed.lock().unwrap();
             for (i, p) in b.bezier.ctrl_points().iter().enumerate() {
                 if p.distance(&Point{x: x as f32, y: y as f32}) < HANDLE_RADIUS {
@@ -120,7 +119,7 @@ fn main() {
         let view_drag_update = view_guard.clone();
         let bezier_drag = bezier.clone();
         let drag_initial = drag_start.clone();
-        d.connect_drag_update(move |a,cx ,cy| {
+        d.connect_drag_update(move |_g,cx ,cy| {
             if let Ok(mut b) = bezier_drag.lock() {
                 if let Some(selected) = b.selected_ctrl_pt {
                     // move the control point                   
@@ -140,7 +139,7 @@ fn main() {
         // repaint on drag end and set selected to none
         let bezier_drag = bezier.clone();
         let view_drag_update = view_guard.clone();
-        d.connect_drag_end(move | _g, x, y| {
+        d.connect_drag_end(move | _g, _x, _y| {
             if let Ok(mut b) = bezier_drag.lock() {
                 b.selected_ctrl_pt = None;
                 view_drag_update.lock().unwrap().queue_draw();

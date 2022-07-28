@@ -1,6 +1,4 @@
-use crate::geometry::Point;
-
-const DERIVATIVE_CTRL_POINTS: usize = 3;
+use crate::Point;
 
 #[derive(Debug, Clone)]
 pub struct Bezier {
