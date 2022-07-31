@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+geometry = {path = "../geometry", version="0.1"}
 
 
 [dependencies.windows]
@@ -14,5 +15,6 @@ features = [
     "Win32_System_WinRT",
     "Win32_Foundation",
     "Win32_Graphics_Gdi",
+    "Win32_Graphics_Direct2D",
     "Win32_UI_WindowsAndMessaging"
 ]
