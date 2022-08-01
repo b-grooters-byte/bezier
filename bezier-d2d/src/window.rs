@@ -1,23 +1,30 @@
-use std::{sync::{Once, Arc}, ptr};
+use std::{
+    ptr,
+    sync::{Arc, Once},
+};
 
 use geometry::{bezier::Bezier, Point};
+use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::{
+    core::{Result, HSTRING},
+    w,
     Win32::{
-        Foundation::{
-            HINSTANCE,
-            HWND, WPARAM, LPARAM, LRESULT,
+        Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, WPARAM},
+        Graphics::{
+            Direct2D::{ID2D1DeviceContext, ID2D1Factory1, ID2D1SolidColorBrush, ID2D1StrokeStyle},
+            Dxgi::IDXGISwapChain1,
+            Gdi::{BeginPaint, CreateSolidBrush, EndPaint, ValidateRect, PAINTSTRUCT},
         },
         UI::WindowsAndMessaging::{
-            WNDCLASSW, LoadCursorW, IDC_ARROW, DefWindowProcW, RegisterClassW, CreateWindowExW, CW_USEDEFAULT, 
-            HMENU, WS_OVERLAPPEDWINDOW, ShowWindow, SW_SHOW, WINDOW_EX_STYLE, CS_HREDRAW, CS_VREDRAW, PostQuitMessage, WS_VISIBLE, WM_PAINT, WM_DESTROY, COLOR_WINDOW, WM_MOUSEMOVE, MK_LBUTTON,
-        }, Graphics::{Gdi::{ValidateRect, CreateSolidBrush, EndPaint, BeginPaint, PAINTSTRUCT}, Direct2D::{ID2D1Factory1, ID2D1StrokeStyle, ID2D1DeviceContext}}, 
-    }, w, core::{Result, HSTRING}
-};
-use windows::{
-    Win32::System::LibraryLoader::GetModuleHandleW,
+            CreateWindowExW, DefWindowProcW, LoadCursorW, PostQuitMessage, RegisterClassW,
+            ShowWindow, COLOR_WINDOW, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, HMENU, IDC_ARROW,
+            MK_LBUTTON, SW_SHOW, WINDOW_EX_STYLE, WM_DESTROY, WM_MOUSEMOVE, WM_PAINT, WNDCLASSW,
+            WS_OVERLAPPEDWINDOW, WS_VISIBLE,
+        },
+    },
 };
 
-use crate::direct2d::{create_factory, create_style};
+use crate::direct2d::{create_device, create_factory, create_style};
 
 static REGISTER_WINDOW_CLASS: Once = Once::new();
 static WINDOW_CLASS_NAME: &HSTRING = w!("bytetrail.window.bezier");
@@ -32,21 +39,31 @@ pub struct RenderState {
 
 impl RenderState {
     pub(crate) fn new() -> Self {
-        RenderState { bezier: Bezier::new_with_ctrl_point([
-            Point{ x: 20.0, y: 20.0 },
-            Point{x: 120.0, y: 20.0 },
-            Point{ x: 320.0, y:220.0 },
-            Point{ x: 420.0, y:22.0}
-        ], 0.025), hover: None, selected:None }
+        RenderState {
+            bezier: Bezier::new_with_ctrl_point(
+                [
+                    Point { x: 20.0, y: 20.0 },
+                    Point { x: 120.0, y: 20.0 },
+                    Point { x: 320.0, y: 220.0 },
+                    Point { x: 420.0, y: 22.0 },
+                ],
+                0.025,
+            ),
+            hover: None,
+            selected: None,
+        }
     }
 }
-
 
 pub(crate) struct Window {
     handle: HWND,
     factory: ID2D1Factory1,
     line_style: ID2D1StrokeStyle,
     target: Option<ID2D1DeviceContext>,
+    swapchain: Option<IDXGISwapChain1>,
+    line_brush: Option<ID2D1SolidColorBrush>,
+    selected_brush: Option<ID2D1SolidColorBrush>,
+    control_brush: Option<ID2D1SolidColorBrush>,
     render_state: RenderState,
 }
 
@@ -57,18 +74,17 @@ impl Window {
         let instance = unsafe { GetModuleHandleW(None)? };
         // synchronization for a one time initialization of FFI call
         REGISTER_WINDOW_CLASS.call_once(|| {
-
             // use defaults for all other fields
             let class = WNDCLASSW {
                 lpfnWndProc: Some(Self::wnd_proc),
                 hbrBackground: unsafe { CreateSolidBrush(COLOR_WINDOW.0) },
                 hInstance: instance,
                 style: CS_HREDRAW | CS_VREDRAW,
-                hCursor: unsafe { LoadCursorW(HINSTANCE(0), IDC_ARROW).ok().unwrap()},
+                hCursor: unsafe { LoadCursorW(HINSTANCE(0), IDC_ARROW).ok().unwrap() },
                 lpszClassName: WINDOW_CLASS_NAME.into(),
                 ..Default::default()
             };
-            assert_ne!(unsafe { RegisterClassW(&class)}, 0);
+            assert_ne!(unsafe { RegisterClassW(&class) }, 0);
         });
 
         let mut window_internal = Box::new(Self {
@@ -76,29 +92,40 @@ impl Window {
             render_state: RenderState::new(),
             factory,
             line_style,
+            line_brush: None,
+            selected_brush: None,
+            control_brush: None,
+            swapchain: None,
             target: None,
         });
 
-
-        // create the window using Self reference 
+        // create the window using Self reference
         let window = unsafe {
             CreateWindowExW(
-                WINDOW_EX_STYLE::default(), 
+                WINDOW_EX_STYLE::default(),
                 WINDOW_CLASS_NAME,
-                &HSTRING::from(title), 
+                &HSTRING::from(title),
                 WS_VISIBLE | WS_OVERLAPPEDWINDOW,
-                CW_USEDEFAULT, 
-                CW_USEDEFAULT, 
-                400, 
-                300, 
-                HWND(0), 
-                HMENU(0), 
-                instance, 
+                CW_USEDEFAULT,
+                CW_USEDEFAULT,
+                400,
+                300,
+                HWND(0),
+                HMENU(0),
+                instance,
                 window_internal.as_mut() as *mut _ as _,
             )
         };
         unsafe { ShowWindow(window, SW_SHOW) };
         Ok(window_internal)
+    }
+
+    fn render(&mut self) -> Result<()> {
+        // create the device specific resources
+        if self.target == None {
+            let device = create_device();
+        }
+        Ok(())
     }
 
     unsafe extern "system" fn wnd_proc(
@@ -114,19 +141,16 @@ impl Window {
                 ValidateRect(window, ptr::null());
                 EndPaint(window, &mut ps);
                 LRESULT(0)
-
             }
             WM_MOUSEMOVE => {
-                if wparam.0 == MK_LBUTTON as usize {
-                
-                }
+                if wparam.0 == MK_LBUTTON as usize {}
                 LRESULT(0)
             }
             WM_DESTROY => {
                 PostQuitMessage(0);
                 LRESULT(0)
             }
-            _ =>  DefWindowProcW(window, message, wparam, lparam),
+            _ => DefWindowProcW(window, message, wparam, lparam),
         }
     }
 }

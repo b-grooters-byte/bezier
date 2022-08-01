@@ -1,10 +1,15 @@
-mod window;
 mod direct2d;
+mod window;
 
-use windows::{Win32::{UI::WindowsAndMessaging::{MessageBoxA, MB_OK, GetMessageW, TranslateMessage, DispatchMessageW, MSG}, Foundation::HWND}, s};
-
-
-
+use windows::{
+    s,
+    Win32::{
+        Foundation::HWND,
+        UI::WindowsAndMessaging::{
+            DispatchMessageW, GetMessageW, MessageBoxA, TranslateMessage, MB_OK, MSG,
+        },
+    },
+};
 
 fn main() {
     let main_window = window::Window::new("Bezier");
@@ -16,5 +21,4 @@ fn main() {
             DispatchMessageW(&message);
         }
     }
-
 }
