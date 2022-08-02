@@ -4,7 +4,7 @@ use std::{
 };
 
 use geometry::{bezier::Bezier, Point};
-use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows::Win32::{System::LibraryLoader::GetModuleHandleW, UI::WindowsAndMessaging::{WM_CREATE, CREATESTRUCTA}};
 use windows::{
     core::{Result, HSTRING},
     w,
@@ -124,6 +124,7 @@ impl Window {
         // create the device specific resources
         if self.target == None {
             let device = create_device();
+            println!("{:?}", device);
         }
         Ok(())
     }
@@ -135,6 +136,12 @@ impl Window {
         lparam: LPARAM,
     ) -> LRESULT {
         match message as u32 {
+            WM_CREATE => {
+                let create_struct = lparam.0 as *const CREATESTRUCTA;
+                let this = (*create_struct).lpCreateParams as *mut Self;
+                (*this).handle = window;
+                LRESULT(0)
+            }
             WM_PAINT => {
                 let mut ps = PAINTSTRUCT::default();
                 BeginPaint(window, &mut ps);
