@@ -66,7 +66,7 @@ impl Bezier {
     }
 
     pub fn set_ctrl_point(&mut self, p: Point, idx: usize) {
-        assert!(idx<4);
+        assert!(idx < 4);
         self.ctrl_point[idx] = p;
         self.modified = true;
     }

@@ -1,6 +1,5 @@
 pub mod bezier;
 
-
 #[derive(Debug, Clone)]
 pub struct Rect {
     pub x: f32,
