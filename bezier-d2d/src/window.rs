@@ -4,7 +4,7 @@ use std::{
 };
 
 use geometry::{bezier::Bezier, Point};
-use windows::Win32::{System::LibraryLoader::GetModuleHandleW, UI::WindowsAndMessaging::{WM_CREATE, CREATESTRUCTA}};
+use windows::Win32::{System::LibraryLoader::GetModuleHandleW, UI::WindowsAndMessaging::{WM_CREATE, CREATESTRUCTA, SetWindowLongPtrA, GWLP_USERDATA, GetWindowLongPtrA}};
 use windows::{
     core::{Result, HSTRING},
     w,
@@ -129,24 +129,15 @@ impl Window {
         Ok(())
     }
 
-    unsafe extern "system" fn wnd_proc(
-        window: HWND,
-        message: u32,
-        wparam: WPARAM,
-        lparam: LPARAM,
-    ) -> LRESULT {
-        match message as u32 {
-            WM_CREATE => {
-                let create_struct = lparam.0 as *const CREATESTRUCTA;
-                let this = (*create_struct).lpCreateParams as *mut Self;
-                (*this).handle = window;
-                LRESULT(0)
-            }
+    fn message_handler(&mut self, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+        match message {
             WM_PAINT => {
                 let mut ps = PAINTSTRUCT::default();
-                BeginPaint(window, &mut ps);
-                ValidateRect(window, ptr::null());
-                EndPaint(window, &mut ps);
+                unsafe {
+                    BeginPaint(self.handle, &mut ps);
+                    ValidateRect(self.handle, ptr::null());
+                    EndPaint(self.handle, &mut ps);    
+                }
                 LRESULT(0)
             }
             WM_MOUSEMOVE => {
@@ -154,10 +145,33 @@ impl Window {
                 LRESULT(0)
             }
             WM_DESTROY => {
-                PostQuitMessage(0);
+                unsafe { PostQuitMessage(0) }; 
                 LRESULT(0)
             }
-            _ => DefWindowProcW(window, message, wparam, lparam),
+            _ => unsafe { DefWindowProcW(self.handle, message, wparam, lparam) } ,
+    
         }
+    }
+
+    unsafe extern "system" fn wnd_proc(
+        window: HWND,
+        message: u32,
+        wparam: WPARAM,
+        lparam: LPARAM,
+    ) -> LRESULT {
+        if message == WM_CREATE {
+                let create_struct = lparam.0 as *const CREATESTRUCTA;
+                let this = (*create_struct).lpCreateParams as *mut Self;
+                (*this).handle = window;
+
+                SetWindowLongPtrA(window, GWLP_USERDATA, this as _);
+        } else {
+            let this = GetWindowLongPtrA(window, GWLP_USERDATA) as *mut Self;
+
+            if !this.is_null() {
+                return (*this).message_handler(message, wparam, lparam)
+            }
+        }
+        DefWindowProcW(window, message, wparam, lparam)
     }
 }
