@@ -4,7 +4,7 @@ use windows::{
     core::*, Win32::Foundation::*, Win32::Graphics::Direct2D::Common::*,
     Win32::Graphics::Direct2D::*, Win32::Graphics::Direct3D::*, Win32::Graphics::Direct3D11::*,
     Win32::Graphics::Dxgi::Common::*, Win32::Graphics::Dxgi::*,
-    Win32::System::Com::*,
+    Win32::System::Com::*, Foundation::Numerics::Matrix3x2,
 };
 
 /// Creates a single threaded Direct2D factory with default options.
@@ -130,6 +130,12 @@ pub(crate) fn create_swapchain(device: &ID3D11Device, window: HWND) -> Result<ID
                ptr::null(),
                 None) 
     }
+}
+
+pub(crate) fn create_brush(target: &ID2D1DeviceContext, r: f32, g: f32, b: f32, a: f32) -> Result<ID2D1SolidColorBrush> {
+    let color = D2D1_COLOR_F { r, g, b, a};
+    let properties = D2D1_BRUSH_PROPERTIES { opacity: 0.8, transform: Matrix3x2::identity() };
+    unsafe { target.CreateSolidColorBrush(&color, &properties) }
 }
 
 fn get_dxgi_factory(device: &ID3D11Device) -> Result<IDXGIFactory2> {

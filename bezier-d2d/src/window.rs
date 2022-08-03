@@ -1,5 +1,5 @@
 use std::{
-    sync::Once,
+    sync::Once, ptr,
 };
 
 use geometry::{bezier::Bezier, Point};
@@ -7,7 +7,7 @@ use windows::Win32::{
     System::LibraryLoader::GetModuleHandleW,
     UI::WindowsAndMessaging::{
         GetWindowLongPtrA, SetWindowLongPtrA, CREATESTRUCTA, GWLP_USERDATA, WM_CREATE,
-    },
+    }, Graphics::Direct2D::Common::D2D1_COLOR_F,
 };
 use windows::{
     core::{Result, HSTRING},
@@ -28,7 +28,7 @@ use windows::{
     },
 };
 
-use crate::direct2d::{create_device, create_factory, create_render_target, create_style, create_swapchain, create_swapchain_bitmap};
+use crate::direct2d::{create_device, create_factory, create_render_target, create_style, create_swapchain, create_swapchain_bitmap, create_brush};
 
 static REGISTER_WINDOW_CLASS: Once = Once::new();
 static WINDOW_CLASS_NAME: &HSTRING = w!("bytetrail.window.bezier");
@@ -139,7 +139,28 @@ impl Window {
 
             // setup the swap chain
             let swapchain = create_swapchain(&device, self.handle)?;
-            create_swapchain_bitmap(&swapchain, &target);
+            create_swapchain_bitmap(&swapchain, &target)?;
+            self.control_brush = create_brush(&target, 0.2, 0.2, 0.2, 1.0).ok();
+            self.line_brush = create_brush(&target, 0.0, 0.0, 0.0, 1.0).ok();
+            self.target = Some(target);
+            self.swapchain = Some(swapchain);
+        }
+        // draw 
+        //let target = self.target.as_ref().unwrap();
+        unsafe { self.target.as_ref().unwrap().BeginDraw() };
+        self.draw()?;
+        unsafe {
+            let null: *mut u64 = ptr::null_mut(); 
+            self.target.as_ref().unwrap().EndDraw(null, null)?;
+        }
+
+        Ok(())
+    }
+
+    fn draw(&mut self) -> Result<()> {
+        let target = self.target.as_ref().unwrap();
+        unsafe {
+            target.Clear(&D2D1_COLOR_F{ r: 0.9, g: 0.9, b: 0.9, a: 0.5});
         }
         Ok(())
     }
