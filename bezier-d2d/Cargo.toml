@@ -7,7 +7,7 @@ edition = "2021"
 geometry = {path = "../geometry", version="0.1"}
 
 [dependencies.windows]
-path = "C:/Users/brand/Projects/windows-rs/crates/libs/windows"
+path = "../../windows-rs/crates/libs/windows"
 features = [
     "Foundation",
     "Foundation_Numerics",
