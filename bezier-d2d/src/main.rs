@@ -1,18 +1,13 @@
 mod direct2d;
 mod window;
 
-use windows::{
-    s,
-    Win32::{
-        Foundation::HWND,
-        UI::WindowsAndMessaging::{
-            DispatchMessageW, GetMessageW, MessageBoxA, TranslateMessage, MB_OK, MSG,
-        },
-    },
+use windows::Win32::{
+    Foundation::HWND,
+    UI::WindowsAndMessaging::{DispatchMessageW, GetMessageW, MSG},
 };
 
 fn main() {
-    let main_window = window::Window::new("Bezier");
+    let _main_window = window::Window::new("Bezier");
 
     let mut message = MSG::default();
     unsafe {

@@ -79,7 +79,7 @@ impl Bezier {
     }
 
     pub fn translate(&mut self, cx: f32, cy: f32) {
-        if cy != 0. && cy != 0. {
+        if cx != 0. && cy != 0. {
             for p in self.ctrl_point.as_mut() {
                 p.x += cx;
                 p.y += cy

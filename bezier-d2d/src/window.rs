@@ -1,38 +1,41 @@
-use std::{
-    sync::Once, ptr,
-};
+use std::sync::Once;
 
 use geometry::{bezier::Bezier, Point};
-use windows::Win32::{
+use windows::{Win32::{
+    Foundation::RECT,
+    Graphics::Direct2D::{
+        Common::{D2D1_COLOR_F, D2D_POINT_2F, D2D_SIZE_U},
+        ID2D1HwndRenderTarget, D2D1_HWND_RENDER_TARGET_PROPERTIES, D2D1_PRESENT_OPTIONS,
+        D2D1_RENDER_TARGET_PROPERTIES,
+    },
     System::LibraryLoader::GetModuleHandleW,
     UI::WindowsAndMessaging::{
-        GetWindowLongPtrA, SetWindowLongPtrA, CREATESTRUCTA, GWLP_USERDATA, WM_CREATE,
-    }, Graphics::Direct2D::Common::D2D1_COLOR_F,
-};
+        GetClientRect, GetWindowLongPtrA, SetWindowLongPtrA, CREATESTRUCTA, GWLP_USERDATA,
+        WM_CREATE,
+    },
+}, core::HRESULT};
 use windows::{
     core::{Result, HSTRING},
     w,
     Win32::{
         Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, WPARAM},
         Graphics::{
-            Direct2D::{ID2D1DeviceContext, ID2D1Factory1, ID2D1SolidColorBrush, ID2D1StrokeStyle},
-            Dxgi::IDXGISwapChain1,
-            Gdi::{BeginPaint, CreateSolidBrush, EndPaint, ValidateRect, PAINTSTRUCT},
+            Direct2D::{ID2D1Factory1, ID2D1SolidColorBrush, ID2D1StrokeStyle},
+            Gdi::{BeginPaint, CreateSolidBrush, EndPaint, PAINTSTRUCT},
         },
         UI::WindowsAndMessaging::{
             CreateWindowExW, DefWindowProcW, LoadCursorW, PostQuitMessage, RegisterClassW,
             ShowWindow, COLOR_WINDOW, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, HMENU, IDC_ARROW,
-            MK_LBUTTON, SW_SHOW, WINDOW_EX_STYLE, WM_DESTROY, WM_MOUSEMOVE, WM_PAINT, WNDCLASSW,
+            MK_LBUTTON, SW_SHOW, WINDOW_EX_STYLE, WM_DESTROY, WM_MOUSEMOVE, WM_PAINT, WM_SIZE, WNDCLASSW,
             WS_OVERLAPPEDWINDOW, WS_VISIBLE,
         },
     },
 };
 
-use crate::direct2d::{create_device, create_factory, create_render_target, create_style, create_swapchain, create_swapchain_bitmap, create_brush};
+use crate::direct2d::{create_brush, create_factory, create_style};
 
 static REGISTER_WINDOW_CLASS: Once = Once::new();
 static WINDOW_CLASS_NAME: &HSTRING = w!("bytetrail.window.bezier");
-static LINE_STYLE_HANDLE: [f32; 2] = [2.0, 1.0];
 
 #[derive(Debug, Clone)]
 pub struct RenderState {
@@ -48,8 +51,8 @@ impl RenderState {
                 [
                     Point { x: 20.0, y: 20.0 },
                     Point { x: 120.0, y: 20.0 },
-                    Point { x: 320.0, y: 220.0 },
-                    Point { x: 420.0, y: 22.0 },
+                    Point { x: 220.0, y: 220.0 },
+                    Point { x: 320.0, y: 20.0 },
                 ],
                 0.025,
             ),
@@ -63,8 +66,7 @@ pub(crate) struct Window {
     handle: HWND,
     factory: ID2D1Factory1,
     line_style: ID2D1StrokeStyle,
-    target: Option<ID2D1DeviceContext>,
-    swapchain: Option<IDXGISwapChain1>,
+    target: Option<ID2D1HwndRenderTarget>,
     line_brush: Option<ID2D1SolidColorBrush>,
     selected_brush: Option<ID2D1SolidColorBrush>,
     control_brush: Option<ID2D1SolidColorBrush>,
@@ -75,7 +77,7 @@ pub(crate) struct Window {
 impl Window {
     pub(crate) fn new(title: &str) -> Result<Box<Self>> {
         let factory = create_factory()?;
-        let line_style = create_style(&factory, &[])?;
+        let line_style = create_style(&factory, None)?;
         let instance = unsafe { GetModuleHandleW(None)? };
         // synchronization for a one time initialization of FFI call
         REGISTER_WINDOW_CLASS.call_once(|| {
@@ -104,7 +106,6 @@ impl Window {
             line_brush: None,
             selected_brush: None,
             control_brush: None,
-            swapchain: None,
             target: None,
             dpi: dpix,
         });
@@ -130,37 +131,74 @@ impl Window {
         Ok(window_internal)
     }
 
+    pub(crate) fn create_render_target(&mut self) -> Result<()> {
+        unsafe {
+            let mut rect: RECT = RECT::default();
+            GetClientRect(self.handle, &mut rect);
+            let props = D2D1_RENDER_TARGET_PROPERTIES::default();
+            let hwnd_props = D2D1_HWND_RENDER_TARGET_PROPERTIES {
+                hwnd: self.handle,
+                pixelSize: windows::Win32::Graphics::Direct2D::Common::D2D_SIZE_U {
+                    width: (rect.right - rect.left) as u32,
+                    height: (rect.bottom - rect.top) as u32,
+                },
+                presentOptions: D2D1_PRESENT_OPTIONS::default(),
+            };
+            let target = self.factory.CreateHwndRenderTarget(&props, &hwnd_props)?;
+            self.target = Some(target);
+        }
+        Ok(())
+    }
+    fn release_device(&mut self) {
+        self.target = None;
+        self.release_device_resources();
+    }
+
+    fn release_device_resources(&mut self) {
+        self.line_brush = None;
+        self.control_brush = None;
+        self.selected_brush = None;
+    }
+
     fn render(&mut self) -> Result<()> {
         // create the device specific resources
         if self.target == None {
-            let device = create_device()?;
-            let target = create_render_target(&self.factory, &device)?;
+            //let device = create_device()?;
+            //let target = create_render_target(&self.factory, &device)?;
+            self.create_render_target()?;
+            let target = self.target.as_ref().unwrap();
             unsafe { target.SetDpi(self.dpi, self.dpi) };
-
-            // setup the swap chain
-            let swapchain = create_swapchain(&device, self.handle)?;
-            create_swapchain_bitmap(&swapchain, &target)?;
-            self.control_brush = create_brush(&target, 0.2, 0.2, 0.2, 1.0).ok();
-            self.line_brush = create_brush(&target, 0.0, 0.0, 0.0, 1.0).ok();
-            self.target = Some(target);
-            self.swapchain = Some(swapchain);
+            self.control_brush = create_brush(target, 0.25, 0.25, 0.25, 1.0).ok();
+            self.line_brush = create_brush(target, 0.0, 0.0, 0.0, 1.0).ok();
         }
-        // draw 
-        //let target = self.target.as_ref().unwrap();
+        // draw
         unsafe { self.target.as_ref().unwrap().BeginDraw() };
         self.draw()?;
-        unsafe {
-            let null: *mut u64 = ptr::null_mut(); 
-            self.target.as_ref().unwrap().EndDraw(null, null)?;
-        }
-
+        unsafe { self.target.as_ref().unwrap().EndDraw(None, None)? };
         Ok(())
     }
 
     fn draw(&mut self) -> Result<()> {
         let target = self.target.as_ref().unwrap();
+        let curve = self.render_state.bezier.curve();
         unsafe {
-            target.Clear(&D2D1_COLOR_F{ r: 0.9, g: 0.9, b: 0.9, a: 0.5});
+            target.Clear(Some(&D2D1_COLOR_F {
+                r: 0.9,
+                g: 0.9,
+                b: 0.9,
+                a: 0.5,
+            }));
+            let mut p1 = &curve[0];
+            for p2 in curve.iter().skip(1) {
+                target.DrawLine(
+                    D2D_POINT_2F { x: p1.x, y: p1.y },
+                    D2D_POINT_2F { x: p2.x, y: p2.y },
+                    self.control_brush.as_ref().unwrap(),
+                    1.0,
+                    &self.line_style,
+                );
+                p1 = p2;
+            }
         }
         Ok(())
     }
@@ -172,15 +210,33 @@ impl Window {
                 unsafe {
                     BeginPaint(self.handle, &mut ps);
                     self.render().expect("unable to render");
-                    EndPaint(self.handle, &mut ps);
+                    EndPaint(self.handle, &ps);
                 }
                 LRESULT(0)
+            }
+            WM_SIZE => {
+                unsafe {
+                    let mut hresult: HRESULT = HRESULT(0);
+                    if let Some(target) = self.target.as_ref() {
+                        let mut rect: RECT = RECT::default();
+                        GetClientRect(self.handle, &mut rect);
+                        let result = target.Resize(&D2D_SIZE_U {
+                            width: (rect.right - rect.left) as u32,
+                            height: (rect.bottom - rect.top) as u32
+                        });
+                        if let Err(e) = result {
+                            hresult = e.code();
+                        }
+                    }
+                    LRESULT(hresult.0 as isize)
+                }
             }
             WM_MOUSEMOVE => {
                 if wparam.0 == MK_LBUTTON as usize {}
                 LRESULT(0)
             }
             WM_DESTROY => {
+                self.release_device();
                 unsafe { PostQuitMessage(0) };
                 LRESULT(0)
             }
