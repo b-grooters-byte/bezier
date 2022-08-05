@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-geometry = {path = "../geometry", version="0.1"}
+geometry = {path = "../geometry", version="0.1", features=["direct2d"]}
 
 [dependencies.windows]
 path = "../../windows-rs/crates/libs/windows"

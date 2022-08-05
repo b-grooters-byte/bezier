@@ -45,6 +45,7 @@ const RENDER_CTRL_HANDLE_RADIUS: f32 = 5.0;
 static REGISTER_WINDOW_CLASS: Once = Once::new();
 static WINDOW_CLASS_NAME: &HSTRING = w!("bytetrail.window.bezier");
 
+
 #[derive(Debug, Clone)]
 pub struct RenderState {
     pub bezier: Bezier,
@@ -83,6 +84,7 @@ pub(crate) struct Window {
     handle: HWND,
     factory: ID2D1Factory1,
     line_style: ID2D1StrokeStyle,
+    ctrl_style: ID2D1StrokeStyle,
     target: Option<ID2D1HwndRenderTarget>,
     line_brush: Option<ID2D1SolidColorBrush>,
     selected_brush: Option<ID2D1SolidColorBrush>,
@@ -95,6 +97,7 @@ impl Window {
     pub(crate) fn new(title: &str) -> Result<Box<Self>> {
         let factory = create_factory()?;
         let line_style = create_style(&factory, None)?;
+        let ctrl_style = create_style(&factory, Some(&[4.0, 2.0, 4.0, 2.0]))?;
         let instance = unsafe { GetModuleHandleW(None)? };
         // synchronization for a one time initialization of FFI call
         REGISTER_WINDOW_CLASS.call_once(|| {
@@ -120,6 +123,7 @@ impl Window {
             render_state: RenderState::new(),
             factory,
             line_style,
+            ctrl_style,
             line_brush: None,
             selected_brush: None,
             control_brush: None,
@@ -224,7 +228,6 @@ impl Window {
                 radiusY: RENDER_CTRL_HANDLE_RADIUS,
                 ..Default::default()
             };
-
             for (idx, ctrl) in self.render_state.bezier.ctrl_points().iter().enumerate() {
                 ellipse.point = D2D_POINT_2F {
                     x: ctrl.x,
@@ -242,6 +245,11 @@ impl Window {
                     &self.line_style,
                 );
             }
+            // draw the control point lines
+            let ctrl_points = self.render_state.bezier.ctrl_points();
+            let ctrl_brush = self.control_brush.as_ref().unwrap();
+            target.DrawLine(ctrl_points[0].into(), ctrl_points[1].into(), ctrl_brush, 1.0, &self.ctrl_style);
+            target.DrawLine(ctrl_points[2].into(), ctrl_points[3].into(), ctrl_brush, 1.0, &self.ctrl_style);
         }
         Ok(())
     }

@@ -40,12 +40,12 @@ impl Draw for BezierRender {
             if let Some(s) = self.selected_ctrl_pt {
                 if s == i {
                     context.set_source_rgb(HANDLE_SELECT_RED, 0.0, 0.0);
-                    context.arc(p.x as f64, p.y as f64, HANDLE_RADIUS as f64, 0.0, 6.28);
+                    context.arc(p.x as f64, p.y as f64, HANDLE_RADIUS as f64, 0.0, std::f64::consts::TAU);
                     context.fill().expect("unable to draw to context");
                     context.set_source_rgb(HANDLE_GRAY, HANDLE_GRAY, HANDLE_GRAY);
                 }
             }
-            context.arc(p.x as f64, p.y as f64, HANDLE_RADIUS as f64, 0.0, 6.28);
+            context.arc(p.x as f64, p.y as f64, HANDLE_RADIUS as f64, 0.0, std::f64::consts::TAU);
             context.stroke().expect("unable to draw to context");
         }
         context.set_dash(&[2.0, 1.0], 0.0);
@@ -136,15 +136,15 @@ fn main() {
             }
         });
         // set the initial offset
-        let drag_begin = drag_start.clone();
+        let drag_begin = drag_start;
         d.connect_drag_begin(move |_g, x, y| {
             let mut p = drag_begin.lock().unwrap();
             p.x = x as f32;
             p.y = y as f32;
         });
         // repaint on drag end and set selected to none
-        let bezier_drag = bezier.clone();
-        let view_drag_update = view_guard.clone();
+        let bezier_drag = bezier;
+        let view_drag_update = view_guard;
         d.connect_drag_end(move |_g, _x, _y| {
             if let Ok(mut b) = bezier_drag.lock() {
                 b.selected_ctrl_pt = None;

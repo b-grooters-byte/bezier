@@ -1,6 +1,9 @@
 pub mod bezier;
 
-#[derive(Debug, Clone)]
+#[cfg(feature="direct2d")]
+use windows::Win32::Graphics::Direct2D::Common::D2D_POINT_2F;
+
+#[derive(Debug, Clone, Copy)]
 pub struct Rect {
     pub x: f32,
     pub y: f32,
@@ -8,7 +11,7 @@ pub struct Rect {
     pub height: f32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Point {
     pub x: f32,
     pub y: f32,
@@ -40,6 +43,13 @@ impl Point {
         }
         cy / cx
     }
+}
+
+#[cfg(feature="direct2d")]
+impl From<Point> for D2D_POINT_2F {
+     fn from(p: Point) -> D2D_POINT_2F {
+        D2D_POINT_2F{ x: p.x, y: p.y}
+     }
 }
 
 impl Rect {
