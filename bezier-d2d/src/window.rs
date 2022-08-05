@@ -11,7 +11,7 @@ use windows::{Win32::{
     System::LibraryLoader::GetModuleHandleW,
     UI::WindowsAndMessaging::{
         GetClientRect, GetWindowLongPtrA, SetWindowLongPtrA, CREATESTRUCTA, GWLP_USERDATA,
-        WM_CREATE,
+        WM_CREATE, WM_LBUTTONDOWN, WM_LBUTTONUP,
     },
 }, core::HRESULT};
 use windows::{
@@ -61,6 +61,15 @@ impl RenderState {
             hover: None,
             selected: None,
         }
+    }
+
+    fn in_control_point(&self, x: f32, y: f32) -> Option<usize> {
+        for (idx, ctrl) in self.bezier.ctrl_points().iter().enumerate() {
+            if ctrl.dist_to_xy(x, y) <= RENDER_CTRL_HANDLE_RADIUS {
+                return Some(idx)
+            }
+        }
+        None
     }
 }
 
@@ -254,9 +263,19 @@ impl Window {
                     LRESULT(hresult.0 as isize)
                 }
             }
+            WM_LBUTTONDOWN => {
+                let (x,y) = mouse_position(lparam);
+                if let Some(idx) = self.render_state.in_control_point(x, y) {
+                    self.render_state.selected = Some(idx);
+                }
+                LRESULT(0)
+            }
+            WM_LBUTTONUP => {
+                self.render_state.selected = None;
+                LRESULT(0)
+            }
             WM_MOUSEMOVE => {
-                let x = (lparam.0  & 0x0000_FFFF) as f32;
-                let y = ((lparam.0  & 0xFFFF_0000) >> 16) as f32;
+                let (x,y) = mouse_position(lparam);
                 self.render_state.selected = None;
                 for (idx, ctrl) in self.render_state.bezier.ctrl_points().iter().enumerate() {
                     // last state was hover
@@ -290,7 +309,6 @@ impl Window {
                     }
                 }
                 if wparam.0 == MK_LBUTTON as usize {
-                    self.render_state.selected = self.render_state.hover;
                 }
                 LRESULT(0)
             }
@@ -324,4 +342,10 @@ impl Window {
         }
         DefWindowProcW(window, message, wparam, lparam)
     }
+}
+
+
+fn mouse_position(lparam: LPARAM) -> (f32, f32) {
+    ((lparam.0  & 0x0000_FFFF) as f32,
+    ((lparam.0  & 0xFFFF_0000) >> 16) as f32)
 }
