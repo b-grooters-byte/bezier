@@ -3,11 +3,11 @@ use std::sync::Once;
 use geometry::{bezier::Bezier, Point};
 use windows::{Win32::{
     Foundation::RECT,
-    Graphics::Direct2D::{
+    Graphics::{Direct2D::{
         Common::{D2D1_COLOR_F, D2D_POINT_2F, D2D_SIZE_U},
         ID2D1HwndRenderTarget, D2D1_HWND_RENDER_TARGET_PROPERTIES, D2D1_PRESENT_OPTIONS,
-        D2D1_RENDER_TARGET_PROPERTIES,
-    },
+        D2D1_RENDER_TARGET_PROPERTIES, D2D1_ELLIPSE,
+    }, Gdi::InvalidateRect},
     System::LibraryLoader::GetModuleHandleW,
     UI::WindowsAndMessaging::{
         GetClientRect, GetWindowLongPtrA, SetWindowLongPtrA, CREATESTRUCTA, GWLP_USERDATA,
@@ -33,6 +33,8 @@ use windows::{
 };
 
 use crate::direct2d::{create_brush, create_factory, create_style};
+
+const RENDER_CTRL_HANDLE_RADIUS: f32 = 5.0;
 
 static REGISTER_WINDOW_CLASS: Once = Once::new();
 static WINDOW_CLASS_NAME: &HSTRING = w!("bytetrail.window.bezier");
@@ -170,6 +172,7 @@ impl Window {
             unsafe { target.SetDpi(self.dpi, self.dpi) };
             self.control_brush = create_brush(target, 0.25, 0.25, 0.25, 1.0).ok();
             self.line_brush = create_brush(target, 0.0, 0.0, 0.0, 1.0).ok();
+            self.selected_brush = create_brush(target, 0.75, 0.0, 0.0, 1.0).ok();
         }
         // draw
         unsafe { self.target.as_ref().unwrap().BeginDraw() };
@@ -188,6 +191,7 @@ impl Window {
                 b: 0.9,
                 a: 0.5,
             }));
+            // draw the curve
             let mut p1 = &curve[0];
             for p2 in curve.iter().skip(1) {
                 target.DrawLine(
@@ -198,6 +202,25 @@ impl Window {
                     &self.line_style,
                 );
                 p1 = p2;
+            }
+            // draw the control handles
+            let mut ellipse = D2D1_ELLIPSE{
+                radiusX: RENDER_CTRL_HANDLE_RADIUS,
+                radiusY: RENDER_CTRL_HANDLE_RADIUS,
+                ..Default::default()
+            };
+
+            for (idx, ctrl) in self.render_state.bezier.ctrl_points().iter().enumerate() {
+                ellipse.point = D2D_POINT_2F{x: ctrl.x, y: ctrl.y};
+                if let Some(select_idx) = self.render_state.hover {
+                    if select_idx == idx {
+                        target.FillEllipse(&ellipse, self.selected_brush.as_ref().unwrap());    
+                    }
+                }
+                target.DrawEllipse(&ellipse, 
+                    self.control_brush.as_ref().unwrap(),
+                    1.0, 
+                    &self.line_style);
             }
         }
         Ok(())
@@ -232,7 +255,43 @@ impl Window {
                 }
             }
             WM_MOUSEMOVE => {
-                if wparam.0 == MK_LBUTTON as usize {}
+                let x = (lparam.0  & 0x0000_FFFF) as f32;
+                let y = ((lparam.0  & 0xFFFF_0000) >> 16) as f32;
+                self.render_state.selected = None;
+                for (idx, ctrl) in self.render_state.bezier.ctrl_points().iter().enumerate() {
+                    // last state was hover
+                    if let Some(hover) = self.render_state.hover {
+                        if idx == hover && ctrl.dist_to_xy(x, y) > RENDER_CTRL_HANDLE_RADIUS {
+                            // left the active control point boundary
+                            self.render_state.hover = None;
+                            unsafe {
+                            InvalidateRect(self.handle, 
+                                Some(&RECT{
+                                    left: (ctrl.x -5.0) as i32, 
+                                    top: (ctrl.y-5.0) as i32, 
+                                    right: (ctrl.x + 5.0) as i32, 
+                                    bottom: (ctrl.y+5.0) as i32}), 
+                                false);
+                            }
+                        }
+                    }
+                    if ctrl.dist_to_xy(x, y) <= RENDER_CTRL_HANDLE_RADIUS {
+                        self.render_state.hover = Some(idx);
+                        unsafe { 
+                            InvalidateRect(self.handle, 
+                                Some(&RECT{
+                                    left: (ctrl.x -5.0) as i32, 
+                                    top: (ctrl.y-5.0) as i32, 
+                                    right: (ctrl.x + 5.0) as i32, 
+                                    bottom: (ctrl.y+5.0) as i32}), 
+                                true);
+                        }
+                        break;
+                    }
+                }
+                if wparam.0 == MK_LBUTTON as usize {
+                    self.render_state.selected = self.render_state.hover;
+                }
                 LRESULT(0)
             }
             WM_DESTROY => {
