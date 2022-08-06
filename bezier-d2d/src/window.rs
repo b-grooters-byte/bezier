@@ -45,7 +45,6 @@ const RENDER_CTRL_HANDLE_RADIUS: f32 = 5.0;
 static REGISTER_WINDOW_CLASS: Once = Once::new();
 static WINDOW_CLASS_NAME: &HSTRING = w!("bytetrail.window.bezier");
 
-
 #[derive(Debug, Clone)]
 pub struct RenderState {
     pub bezier: Bezier,
@@ -248,8 +247,20 @@ impl Window {
             // draw the control point lines
             let ctrl_points = self.render_state.bezier.ctrl_points();
             let ctrl_brush = self.control_brush.as_ref().unwrap();
-            target.DrawLine(ctrl_points[0].into(), ctrl_points[1].into(), ctrl_brush, 1.0, &self.ctrl_style);
-            target.DrawLine(ctrl_points[2].into(), ctrl_points[3].into(), ctrl_brush, 1.0, &self.ctrl_style);
+            target.DrawLine(
+                ctrl_points[0].into(),
+                ctrl_points[1].into(),
+                ctrl_brush,
+                1.0,
+                &self.ctrl_style,
+            );
+            target.DrawLine(
+                ctrl_points[2].into(),
+                ctrl_points[3].into(),
+                ctrl_brush,
+                1.0,
+                &self.ctrl_style,
+            );
         }
         Ok(())
     }
@@ -295,7 +306,30 @@ impl Window {
             WM_MOUSEMOVE => {
                 let (x, y) = mouse_position(lparam);
                 let idx = self.render_state.in_control_point(x, y);
-                self.render_state.selected = None;
+                if wparam.0 == MK_LBUTTON as usize {
+                    if let Some(selected) = self.render_state.selected {
+                        let current = self.render_state.bezier.ctrl_point(selected);
+                        self.render_state
+                            .bezier
+                            .set_ctrl_point(Point { x, y }, selected);
+                        let top = (current.y.min(y) - RENDER_CTRL_HANDLE_RADIUS) as i32;
+                        let bottom = (current.y.max(y) + RENDER_CTRL_HANDLE_RADIUS) as i32;
+                        let left = (current.x.min(x) - RENDER_CTRL_HANDLE_RADIUS) as i32;
+                        let right = (current.x.max(x) + RENDER_CTRL_HANDLE_RADIUS) as i32;
+                        unsafe {
+                            InvalidateRect(
+                                self.handle,
+                                Some(&RECT {
+                                    left,
+                                    top,
+                                    right,
+                                    bottom,
+                                }),
+                                false,
+                            );
+                        }
+                    }
+                }
                 if let Some(idx) = idx {
                     let ctrl = &self.render_state.bezier.ctrl_points()[idx];
                     if self.render_state.hover.is_none() {
@@ -333,7 +367,6 @@ impl Window {
                         }
                     }
                 }
-                if wparam.0 == MK_LBUTTON as usize {}
                 LRESULT(0)
             }
             WM_DESTROY => {

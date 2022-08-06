@@ -61,6 +61,11 @@ impl Bezier {
         }
     }
 
+    pub fn ctrl_point(&self, idx: usize) -> Point {
+        assert!(idx < 4);
+        self.ctrl_point[idx]
+    }
+
     pub fn ctrl_points(&self) -> &[Point; 4] {
         &self.ctrl_point
     }

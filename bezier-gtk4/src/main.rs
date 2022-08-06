@@ -40,12 +40,24 @@ impl Draw for BezierRender {
             if let Some(s) = self.selected_ctrl_pt {
                 if s == i {
                     context.set_source_rgb(HANDLE_SELECT_RED, 0.0, 0.0);
-                    context.arc(p.x as f64, p.y as f64, HANDLE_RADIUS as f64, 0.0, std::f64::consts::TAU);
+                    context.arc(
+                        p.x as f64,
+                        p.y as f64,
+                        HANDLE_RADIUS as f64,
+                        0.0,
+                        std::f64::consts::TAU,
+                    );
                     context.fill().expect("unable to draw to context");
                     context.set_source_rgb(HANDLE_GRAY, HANDLE_GRAY, HANDLE_GRAY);
                 }
             }
-            context.arc(p.x as f64, p.y as f64, HANDLE_RADIUS as f64, 0.0, std::f64::consts::TAU);
+            context.arc(
+                p.x as f64,
+                p.y as f64,
+                HANDLE_RADIUS as f64,
+                0.0,
+                std::f64::consts::TAU,
+            );
             context.stroke().expect("unable to draw to context");
         }
         context.set_dash(&[2.0, 1.0], 0.0);

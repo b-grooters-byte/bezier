@@ -6,7 +6,7 @@ use windows::Win32::{
     UI::WindowsAndMessaging::{DispatchMessageW, GetMessageW, MSG},
 };
 
-fn main() -> windows::core::Result<()>{
+fn main() -> windows::core::Result<()> {
     let _main_window = window::Window::new("Bezier")?;
     let mut message = MSG::default();
     unsafe {

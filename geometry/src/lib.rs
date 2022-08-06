@@ -1,6 +1,6 @@
 pub mod bezier;
 
-#[cfg(feature="direct2d")]
+#[cfg(feature = "direct2d")]
 use windows::Win32::Graphics::Direct2D::Common::D2D_POINT_2F;
 
 #[derive(Debug, Clone, Copy)]
@@ -45,11 +45,11 @@ impl Point {
     }
 }
 
-#[cfg(feature="direct2d")]
+#[cfg(feature = "direct2d")]
 impl From<Point> for D2D_POINT_2F {
-     fn from(p: Point) -> D2D_POINT_2F {
-        D2D_POINT_2F{ x: p.x, y: p.y}
-     }
+    fn from(p: Point) -> D2D_POINT_2F {
+        D2D_POINT_2F { x: p.x, y: p.y }
+    }
 }
 
 impl Rect {
