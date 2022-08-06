@@ -1,7 +1,7 @@
 # bezier
 Demo application with Bézier curves. This is a simple example of 
-Bézier curves and GUI interaction. There GTK4 and Windows
-Direct2D implementations.
+Bézier curves and GUI interaction. A GTK4 and Windows
+Direct2D implementation are included as separate applications.
 
 ## Getting Started
 ### GTK4
@@ -10,7 +10,7 @@ The [Rust GKT4 Book](https://gtk-rs.org/gtk4-rs/stable/latest/book/introduction.
 ### Direct2D
 The [Micorsoft windows-rs](https://docs.microsoft.com/en-us/windows/dev-environment/rust/rust-for-windows) and [Microsoft Win32/Direct2D](https://docs.microsoft.com/en-us/windows/win32/direct2d/getting-started-with-direct2d-nav) documents are good places to start to understand the Direct2D implementation. The Direct2D implementation has been built and tested on Windows 11.
 
-The Direct2D application is built using windows-rs dependencies from a local path rather than the [windows-rs crate](https://crates.io/crates/windows) from crates.io. This was done to resolve some apparent descrepencies in functionality between the 2. This may be related to the build configuration used and will be updated to the crates.io version once resolved.
+The Direct2D application is built using windows-rs dependencies from a local path rather than the [windows-rs crate](https://crates.io/crates/windows) from crates.io. This was done to resolve some apparent descrepencies in functionality using the crates.io library. This may be related to the build configuration used and will be updated to the crates.io version once resolved.
 
 ### Control Points
 The control points may be manipulated using the mouse to click in the control point handle and dragging it around the window. A single control point may be selected at a time.
