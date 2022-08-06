@@ -4,17 +4,22 @@ Bézier curves and GUI interaction. There GTK4 and Windows
 Direct2D implementations.
 
 ## Getting Started
+### GTK4
 The [Rust GKT4 Book](https://gtk-rs.org/gtk4-rs/stable/latest/book/introduction.html) is an excellent starting point for building and running the GTK4 application. The GTK4 application has been built and tested on Windows 11 and OSX Monterey (version 12.4).
 
+### Direct2D
+The [Micorsoft windows-rs](https://docs.microsoft.com/en-us/windows/dev-environment/rust/rust-for-windows) and [Microsoft Win32/Direct2D](https://docs.microsoft.com/en-us/windows/win32/direct2d/getting-started-with-direct2d-nav) documents are good places to start to understand the Direct2D implementation. The Direct2D implementation has been built and tested on Windows 11.
+
+The Direct2D application is built using windows-rs dependencies from a local path rather than the [windows-rs crate](https://crates.io/crates/windows) from crates.io. This was done to resolve some apparent descrepencies in functionality between the 2. This may be related to the build configuration used and will be updated to the crates.io version once resolved.
+
 ### Control Points
-The control points may be manipulated using the mouse to click in the control
-point handle and dragging it around the window. A single control point may be
-selected at a time.
+The control points may be manipulated using the mouse to click in the control point handle and dragging it around the window. A single control point may be selected at a time.
+
+### Direct2D Control Points
+The Direct2D implementation includes visual indicator of current control point on mouse move events. This is not currently included in the GTK4 implementation.
 
 ### GTK4 Drag Operations
-The GTK4 implementation demonstrates drag-begin, drag-update, and drag-end 
-signals being managed by the application. We created a Bezier render structure
-to handle the render state and operations:
+The GTK4 implementation demonstrates drag-begin, drag-update, and drag-end signals being managed by the application. We created a Bezier render structure to handle the render state and operations:
 
 ```rust
 struct BezierRender {
@@ -33,9 +38,18 @@ impl Draw for BezierRender {
     }
 }
 ```
+## Screenshots
 
+### Windows 11 Direct2D
+
+![D2D Windows 11](images/B%C3%A9zier%20WIN11%20D2D.png)
+
+### OSX GTK4 
 
 ![GTK OSX control points](images/Bézier%20OSX.png)
+
+### Windows 11 GTK4
+![GTK Windows 11](images/B%C3%A9zier%20WIN11%20GTK.png)
 
 ## The Math
 The basic equation for a Bézier curve is:
