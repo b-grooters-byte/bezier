@@ -3,5 +3,6 @@
 members = [
     "geometry",
     "bezier-d2d",
-    "bezier-gtk4"
+    "bezier-gtk4",
+    "bezier-demo"
 ]
