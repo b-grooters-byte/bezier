@@ -1,4 +1,6 @@
-use clap::{Parser, ArgEnum};
+use clap::{ArgEnum, Parser};
+
+mod ui;
 
 #[derive(ArgEnum, Debug, Clone)]
 enum Feature {
@@ -13,7 +15,7 @@ struct Args {
     #[clap(short, long, value_parser)]
     feature: Option<Feature>,
     /// The number of connected bezier segments to start with
-    #[clap(short, long, value_parser)] 
+    #[clap(short, long, value_parser)]
     segments: Option<u8>,
 }
 
@@ -22,5 +24,3 @@ fn main() -> windows::core::Result<()> {
 
     Ok(())
 }
-
-
