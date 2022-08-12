@@ -1,6 +1,7 @@
 use clap::{ArgEnum, Parser};
 
 mod ui;
+mod road;
 
 #[derive(ArgEnum, Debug, Clone)]
 enum Feature {
