@@ -1,4 +1,6 @@
 use clap::{ArgEnum, Parser};
+use ui::MainWindow;
+use windows::Win32::{UI::WindowsAndMessaging::{MSG, GetMessageW, DispatchMessageW, TranslateMessage}, Foundation::HWND};
 
 mod ui;
 mod road;
@@ -22,6 +24,15 @@ struct Args {
 
 fn main() -> windows::core::Result<()> {
     let _args = Args::parse();
+
+    let _ = MainWindow::new("Bézier Demo");
+    let mut message = MSG::default();
+    unsafe {
+        while GetMessageW(&mut message, HWND(0), 0, 0).into() {
+            TranslateMessage(&message);
+            DispatchMessageW(&message);
+        }
+    }
 
     Ok(())
 }
