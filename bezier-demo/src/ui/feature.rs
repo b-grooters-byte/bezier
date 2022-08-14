@@ -1,23 +1,24 @@
 use std::sync::Once;
 
-use windows::Win32::Graphics::Gdi::CreateSolidBrush;
 use windows::core::{Result, HSTRING};
-use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, WPARAM, GetLastError};
-use windows::Win32::UI::WindowsAndMessaging::{
-    LoadCursorW, RegisterClassW, CS_HREDRAW, CS_VREDRAW, IDC_ARROW, WNDCLASSW, COLOR_WINDOW, WS_CHILD, WINDOW_EX_STYLE, WS_VISIBLE, WS_TABSTOP, CW_USEDEFAULT, HMENU, CreateWindowExW, WM_CREATE, CREATESTRUCTA, SetWindowLongPtrA, GWLP_USERDATA, GetWindowLongPtrA, DefWindowProcW, COLOR_MENUTEXT, HICON, WS_CHILDWINDOW, COLOR_DESKTOP,
-};
 use windows::w;
+use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, WPARAM};
+use windows::Win32::Graphics::Gdi::CreateSolidBrush;
+use windows::Win32::UI::WindowsAndMessaging::{
+    CreateWindowExW, DefWindowProcW, GetWindowLongPtrA, LoadCursorW, RegisterClassW,
+    SetWindowLongPtrA, CREATESTRUCTA, CS_HREDRAW,
+    CS_VREDRAW, GWLP_USERDATA, HICON, HMENU, IDC_ARROW, WINDOW_EX_STYLE, WM_CREATE,
+    WNDCLASSW, WS_CHILDWINDOW, WS_TABSTOP, WS_VISIBLE,
+};
 
 static REGISTER_FEATURE_WINDOW_CLASS: Once = Once::new();
 static FEATURE_CLASS_NAME: &HSTRING = w!("bytetrail.window.feature_view");
 
-
-pub(crate) struct FeatureView {
+pub(crate) struct FeatureWindow {
     pub(crate) handle: HWND,
 }
 
-impl FeatureView {
- 
+impl FeatureWindow {
     pub(crate) fn new(instance: HINSTANCE, parent: HWND) -> Result<Box<Self>> {
         let mut view = Box::new(Self { handle: HWND(0) });
 
@@ -38,22 +39,23 @@ impl FeatureView {
             assert_ne!(unsafe { RegisterClassW(&class) }, 0);
         });
 
-
         unsafe {
-            let r = CreateWindowExW(
+            CreateWindowExW(
                 WINDOW_EX_STYLE::default(),
                 FEATURE_CLASS_NAME,
                 None,
-                WS_VISIBLE | WS_CHILDWINDOW,
-                0, 0, 0, 0,
+                WS_VISIBLE | WS_CHILDWINDOW | WS_TABSTOP,
+                0,
+                0,
+                0,
+                0,
                 parent,
                 HMENU(0),
                 instance,
                 view.as_mut() as *mut _ as _,
             );
-
         };
-        Ok(view)   
+        Ok(view)
     }
 
     fn message_loop(
@@ -61,10 +63,10 @@ impl FeatureView {
         window: HWND,
         message: u32,
         wparam: WPARAM,
-        lparam: LPARAM
+        lparam: LPARAM,
     ) -> LRESULT {
         match message {
-            _ =>  unsafe { DefWindowProcW(window, message, wparam, lparam) }
+            _ => unsafe { DefWindowProcW(window, message, wparam, lparam) },
         }
     }
 
@@ -80,17 +82,14 @@ impl FeatureView {
             (*this).handle = window;
 
             SetWindowLongPtrA(window, GWLP_USERDATA, this as _);
-        }
-        else {
+        } else {
             let this = GetWindowLongPtrA(window, GWLP_USERDATA) as *mut Self;
 
             if !this.is_null() {
                 return (*this).message_loop(window, message, wparam, lparam);
             }
-    
         }
-        
+
         DefWindowProcW(window, message, wparam, lparam)
     }
-
 }

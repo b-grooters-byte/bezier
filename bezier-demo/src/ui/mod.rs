@@ -1,22 +1,36 @@
 use std::sync::Once;
 
-use windows::{core::HSTRING, w, Win32::{System::LibraryLoader::GetModuleHandleW, UI::WindowsAndMessaging::{WNDCLASSW, RegisterClassW, LoadCursorW, IDC_ARROW, CS_HREDRAW, CS_VREDRAW, COLOR_WINDOW, CreateWindowExW, WINDOW_EX_STYLE, SW_SHOW, HMENU, CW_USEDEFAULT, WS_VISIBLE, WS_OVERLAPPEDWINDOW, ShowWindow, WM_CREATE, CREATESTRUCTA, SetWindowLongPtrA, GWLP_USERDATA, DefWindowProcW, WM_SIZECLIPBOARD, WM_SIZE, GetWindowLongPtrA, PostQuitMessage, WM_DESTROY, MoveWindow}, Graphics::Gdi::CreateSolidBrush, Foundation::{HWND, WPARAM, LPARAM, LRESULT, HINSTANCE, GetLastError}}};
+use windows::{
+    core::HSTRING,
+    w,
+    Win32::{
+        Foundation::{GetLastError, HINSTANCE, HWND, LPARAM, LRESULT, WPARAM},
+        Graphics::Gdi::CreateSolidBrush,
+        System::LibraryLoader::GetModuleHandleW,
+        UI::WindowsAndMessaging::{
+            CreateWindowExW, DefWindowProcW, GetWindowLongPtrA, LoadCursorW, MoveWindow,
+            PostQuitMessage, RegisterClassW, SetWindowLongPtrA, ShowWindow, COLOR_WINDOW,
+            CREATESTRUCTA, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, GWLP_USERDATA, HMENU, IDC_ARROW,
+            SW_SHOW, WINDOW_EX_STYLE, WM_CREATE, WM_DESTROY, WM_SIZE, WNDCLASSW,
+            WS_OVERLAPPEDWINDOW, WS_VISIBLE,
+        },
+    },
+};
 
-use self::feature::FeatureView;
+use self::feature::FeatureWindow;
 
 mod feature;
 
 static REGISTER_WINDOW_CLASS: Once = Once::new();
 static WINDOW_CLASS_NAME: &HSTRING = w!("bytetrail.window.bezier_demo_main");
 
-
 pub(crate) struct MainWindow {
     handle: HWND,
-    feature_wnd: Option<Box<FeatureView>>,
+    feature_wnd: Option<Box<FeatureWindow>>,
 }
 
 impl MainWindow {
-    pub(crate) fn new(title: &'static str) -> windows::core::Result<Box<Self>>{
+    pub(crate) fn new(title: &'static str) -> windows::core::Result<Box<Self>> {
         let instance = unsafe { GetModuleHandleW(None)? };
         // synchronization for a one time initialization of FFI call
         REGISTER_WINDOW_CLASS.call_once(|| {
@@ -33,11 +47,11 @@ impl MainWindow {
             assert_ne!(unsafe { RegisterClassW(&class) }, 0);
         });
 
-        let mut main_window = Box::new(MainWindow{
+        let mut main_window = Box::new(MainWindow {
             handle: HWND(0),
             feature_wnd: None,
         });
-        
+
         // create the window using Self reference
         let window = unsafe {
             CreateWindowExW(
@@ -58,8 +72,9 @@ impl MainWindow {
         unsafe { ShowWindow(window, SW_SHOW) };
         Ok(main_window)
     }
-    
-    fn message_loop(&mut self,
+
+    fn message_loop(
+        &mut self,
         window: HWND,
         message: u32,
         wparam: WPARAM,
@@ -67,10 +82,10 @@ impl MainWindow {
     ) -> LRESULT {
         match message {
             WM_CREATE => {
-                let result = unsafe { GetModuleHandleW(None) }; 
+                let result = unsafe { GetModuleHandleW(None) };
                 match result {
                     Ok(instance) => {
-                        let feature_wnd = FeatureView::new(instance, self.handle);
+                        let feature_wnd = FeatureWindow::new(instance, self.handle);
                         // TODO manage errors
                         self.feature_wnd = Some(feature_wnd.unwrap());
                         LRESULT(0)
@@ -84,7 +99,16 @@ impl MainWindow {
             WM_SIZE => {
                 let cx = lparam.0 & 0x0000_FFFF;
                 let cy = (lparam.0 & 0xFFFF_0000) >> 16;
-                unsafe { MoveWindow(self.feature_wnd.as_ref().unwrap().handle, 100, 0, cx as i32, cy as i32, true)};
+                unsafe {
+                    MoveWindow(
+                        self.feature_wnd.as_ref().unwrap().handle,
+                        100,
+                        0,
+                        cx as i32,
+                        cy as i32,
+                        true,
+                    )
+                };
 
                 LRESULT(0)
             }
@@ -92,10 +116,10 @@ impl MainWindow {
                 unsafe { PostQuitMessage(0) };
                 LRESULT(0)
             }
-            _ => unsafe { DefWindowProcW(window, message, wparam, lparam) }
+            _ => unsafe { DefWindowProcW(window, message, wparam, lparam) },
         }
     }
-    
+
     unsafe extern "system" fn wnd_proc(
         window: HWND,
         message: u32,
@@ -114,7 +138,7 @@ impl MainWindow {
         if !this.is_null() {
             return (*this).message_loop(window, message, wparam, lparam);
         }
-        
+
         DefWindowProcW(window, message, wparam, lparam)
     }
 }

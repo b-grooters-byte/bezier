@@ -1,9 +1,12 @@
 use clap::{ArgEnum, Parser};
 use ui::MainWindow;
-use windows::Win32::{UI::WindowsAndMessaging::{MSG, GetMessageW, DispatchMessageW, TranslateMessage}, Foundation::HWND};
+use windows::Win32::{
+    Foundation::HWND,
+    UI::WindowsAndMessaging::{DispatchMessageW, GetMessageW, TranslateMessage, MSG},
+};
 
+mod feature;
 mod ui;
-mod road;
 
 #[derive(ArgEnum, Debug, Clone)]
 enum Feature {
