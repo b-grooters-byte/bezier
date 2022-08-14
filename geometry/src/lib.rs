@@ -1,5 +1,7 @@
 pub mod bezier;
 
+use std::ops;
+
 #[cfg(feature = "direct2d")]
 use windows::Win32::Graphics::Direct2D::Common::D2D_POINT_2F;
 
@@ -45,6 +47,28 @@ impl Point {
     }
 }
 
+impl ops::Add<Point> for Point {
+    type Output = Point;
+
+    fn add(self, rhs: Point) -> Point {
+        Point {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl ops::Sub<Point> for Point {
+    type Output = Point;
+
+    fn sub(self, rhs: Point) -> Point {
+        Point {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+        }
+    }
+}
+
 #[cfg(feature = "direct2d")]
 impl From<Point> for D2D_POINT_2F {
     fn from(p: Point) -> D2D_POINT_2F {
@@ -69,11 +93,36 @@ impl Rect {
 
 #[cfg(test)]
 mod test {
+
+    const EPSILON: f32 = 0.0001;
+
     use super::*;
 
     #[test]
     fn test_contains() {
         let r = Rect::new(10.0, 10.0, 10.0, 10.0);
         assert!(r.contains(Point { x: 15.0, y: 15.0 }));
+    }
+
+    #[test]
+    fn test_add() {
+        let p0 = Point { x: 5., y: -5. };
+        let p1 = Point { x: 10., y: 10. };
+
+        let p3 = p0 + p1;
+
+        assert!(p3.x - 15.0 < EPSILON);
+        assert!(p3.y - 5.0 < EPSILON);
+    }
+
+    #[test]
+    fn test_sub() {
+        let p0 = Point { x: 5., y: -5. };
+        let p1 = Point { x: 10., y: 10. };
+
+        let p3 = p0 - p1;
+
+        assert!(f32::abs(p3.x + 5.0) < EPSILON);
+        assert!(f32::abs(p3.y + 15.0) < EPSILON);
     }
 }
