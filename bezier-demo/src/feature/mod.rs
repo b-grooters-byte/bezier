@@ -1,3 +1,5 @@
+pub mod road;
+
 pub(crate) trait Feature {
     /// gets the control point count of the Bézier feature
     fn ctrl_points(&self) -> usize;

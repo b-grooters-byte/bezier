@@ -6,9 +6,8 @@ use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Gdi::CreateSolidBrush;
 use windows::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, GetWindowLongPtrA, LoadCursorW, RegisterClassW,
-    SetWindowLongPtrA, CREATESTRUCTA, CS_HREDRAW,
-    CS_VREDRAW, GWLP_USERDATA, HICON, HMENU, IDC_ARROW, WINDOW_EX_STYLE, WM_CREATE,
-    WNDCLASSW, WS_CHILDWINDOW, WS_TABSTOP, WS_VISIBLE,
+    SetWindowLongPtrA, CREATESTRUCTA, CS_HREDRAW, CS_VREDRAW, GWLP_USERDATA, HICON, HMENU,
+    IDC_ARROW, WINDOW_EX_STYLE, WM_CREATE, WNDCLASSW, WS_CHILDWINDOW, WS_TABSTOP, WS_VISIBLE,
 };
 
 static REGISTER_FEATURE_WINDOW_CLASS: Once = Once::new();
