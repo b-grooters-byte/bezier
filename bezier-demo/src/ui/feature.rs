@@ -2,24 +2,53 @@ use std::sync::Once;
 
 use windows::core::{Result, HSTRING};
 use windows::w;
-use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, WPARAM};
+use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, RECT, WPARAM};
+use windows::Win32::Graphics::Direct2D::{
+    ID2D1Factory1, ID2D1HwndRenderTarget, ID2D1SolidColorBrush, D2D1_HWND_RENDER_TARGET_PROPERTIES,
+    D2D1_PRESENT_OPTIONS, D2D1_RENDER_TARGET_PROPERTIES,
+};
 use windows::Win32::Graphics::Gdi::CreateSolidBrush;
 use windows::Win32::UI::WindowsAndMessaging::{
-    CreateWindowExW, DefWindowProcW, GetWindowLongPtrA, LoadCursorW, RegisterClassW,
+    CreateWindowExW, DefWindowProcW, GetClientRect, GetWindowLongPtrA, LoadCursorW, RegisterClassW,
     SetWindowLongPtrA, CREATESTRUCTA, CS_HREDRAW, CS_VREDRAW, GWLP_USERDATA, HICON, HMENU,
     IDC_ARROW, WINDOW_EX_STYLE, WM_CREATE, WNDCLASSW, WS_CHILDWINDOW, WS_TABSTOP, WS_VISIBLE,
 };
 
+use crate::feature::road::Road;
+
+use super::direct2d::create_factory;
+
 static REGISTER_FEATURE_WINDOW_CLASS: Once = Once::new();
 static FEATURE_CLASS_NAME: &HSTRING = w!("bytetrail.window.feature_view");
 
+struct RoadVisual {
+    road: Road,
+    surface_brush: Option<ID2D1SolidColorBrush>,
+    centerline_brush: Option<ID2D1SolidColorBrush>,
+    edgeline_brush: Option<ID2D1SolidColorBrush>,
+    selected: Option<usize>,
+    hover: Option<usize>,
+}
+
+impl RoadVisual {
+    fn release_device_resources(&mut self) {
+        self.surface_brush = None;
+        self.centerline_brush = None;
+        self.edgeline_brush = None;
+    }
+}
+
+#[derive(Debug)]
 pub(crate) struct FeatureWindow {
     pub(crate) handle: HWND,
+    factory: ID2D1Factory1,
+    target: Option<ID2D1HwndRenderTarget>,
+    dpi: f32,
 }
 
 impl FeatureWindow {
     pub(crate) fn new(instance: HINSTANCE, parent: HWND) -> Result<Box<Self>> {
-        let mut view = Box::new(Self { handle: HWND(0) });
+        let factory = create_factory()?;
 
         REGISTER_FEATURE_WINDOW_CLASS.call_once(|| {
             // use defaults for all other fields
@@ -36,6 +65,16 @@ impl FeatureWindow {
                 ..Default::default()
             };
             assert_ne!(unsafe { RegisterClassW(&class) }, 0);
+        });
+
+        let mut dpix = 0.0;
+        let mut dpiy = 0.0;
+        unsafe { factory.GetDesktopDpi(&mut dpix, &mut dpiy) };
+        let mut view = Box::new(Self {
+            handle: HWND(0),
+            factory,
+            target: None,
+            dpi: dpix,
         });
 
         unsafe {
@@ -55,6 +94,34 @@ impl FeatureWindow {
             );
         };
         Ok(view)
+    }
+
+    pub(crate) fn create_render_target(&mut self) -> Result<()> {
+        unsafe {
+            let mut rect: RECT = RECT::default();
+            GetClientRect(self.handle, &mut rect);
+            let props = D2D1_RENDER_TARGET_PROPERTIES::default();
+            let hwnd_props = D2D1_HWND_RENDER_TARGET_PROPERTIES {
+                hwnd: self.handle,
+                pixelSize: windows::Win32::Graphics::Direct2D::Common::D2D_SIZE_U {
+                    width: (rect.right - rect.left) as u32,
+                    height: (rect.bottom - rect.top) as u32,
+                },
+                presentOptions: D2D1_PRESENT_OPTIONS::default(),
+            };
+            let target = self.factory.CreateHwndRenderTarget(&props, &hwnd_props)?;
+            self.target = Some(target);
+        }
+        Ok(())
+    }
+
+    fn release_device(&mut self) {
+        self.target = None;
+        self.release_device_resources();
+    }
+
+    fn release_device_resources(&mut self) {
+        // TODO release device resources from current visual
     }
 
     fn message_loop(

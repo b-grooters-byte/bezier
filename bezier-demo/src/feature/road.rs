@@ -35,10 +35,6 @@ impl Road {
         let p1 = self.centerline.last().unwrap().ctrl_point(2);
         let p0 = self.centerline.last().unwrap().ctrl_point(3);
 
-        let b = Bezier::new_with_ctrl_point(
-            [p0, p0.reflect(p1), p2, p3],
-            self.resolution,
-        );
+        let b = Bezier::new_with_ctrl_point([p0, p0.reflect(p1), p2, p3], self.resolution);
     }
-
 }

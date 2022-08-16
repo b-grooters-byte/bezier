@@ -1,5 +1,5 @@
+use self::feature::FeatureWindow;
 use std::sync::Once;
-
 use windows::{
     core::HSTRING,
     w,
@@ -17,8 +17,7 @@ use windows::{
     },
 };
 
-use self::feature::FeatureWindow;
-
+mod direct2d;
 mod feature;
 
 static REGISTER_WINDOW_CLASS: Once = Once::new();

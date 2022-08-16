@@ -5,6 +5,6 @@ pub(crate) trait Feature {
     fn ctrl_points(&self) -> usize;
     /// Gets a single control point
     fn ctrl_point(&self, idx: usize) -> geometry::Point;
-    /// Sets a single control point to the point passed in the parameter list
+    /// Sets a control point to the point passed in the parameter list.
     fn set_ctrl_point(&mut self, idx: usize, point: geometry::Point);
 }
