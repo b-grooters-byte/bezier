@@ -21,6 +21,17 @@ use super::direct2d::create_factory;
 static REGISTER_FEATURE_WINDOW_CLASS: Once = Once::new();
 static FEATURE_CLASS_NAME: &HSTRING = w!("bytetrail.window.feature_view");
 
+trait FeatureVisual {
+    fn draw(&mut self);
+}
+
+impl core::fmt::Debug for dyn FeatureVisual {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+#[derive(Debug)]
 struct RoadVisual {
     road: Road,
     surface_brush: Option<ID2D1SolidColorBrush>,
@@ -31,6 +42,18 @@ struct RoadVisual {
 }
 
 impl RoadVisual {
+    fn new(road_width: f32, centerline: bool, edgeline: bool) -> Self {
+        let road = Road::new();
+        RoadVisual {
+            road,
+            surface_brush: None,
+            centerline_brush: None,
+            edgeline_brush: None,
+            selected: None,
+            hover: None,
+        }
+    }
+
     fn release_device_resources(&mut self) {
         self.surface_brush = None;
         self.centerline_brush = None;
@@ -38,9 +61,16 @@ impl RoadVisual {
     }
 }
 
+impl FeatureVisual for RoadVisual {
+    fn draw(&mut self) {
+        let surface = self.road.surface();
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct FeatureWindow {
     pub(crate) handle: HWND,
+    feature: Option<Box<dyn FeatureVisual>>,
     factory: ID2D1Factory1,
     target: Option<ID2D1HwndRenderTarget>,
     dpi: f32,
@@ -72,6 +102,7 @@ impl FeatureWindow {
         unsafe { factory.GetDesktopDpi(&mut dpix, &mut dpiy) };
         let mut view = Box::new(Self {
             handle: HWND(0),
+            feature: None,
             factory,
             target: None,
             dpi: dpix,

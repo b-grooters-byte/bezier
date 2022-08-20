@@ -93,6 +93,10 @@ impl Bezier {
         }
     }
 
+    pub fn is_modified(&self) -> bool {
+        self.modified
+    }
+
     /// Gets the bezier curve represented as a vector of 2D Points.
     pub fn curve(&mut self) -> &Vec<Point> {
         if self.modified {
