@@ -15,7 +15,7 @@ pub(crate) enum CenterLine {
 pub(crate) struct Road {
     resolution: f32,
     pub centerline: Vec<Bezier>,
-    edge_curve: [Vec<Vec<Point>>; 2],
+    edge_curve: Vec<[Vec<Point>; 2]>,
     edgeline_curve: Option<[Vec<Vec<Point>>; 2]>,
     width: f32,
     centerline_type: Option<CenterLine>,
@@ -27,7 +27,7 @@ impl Road {
         Road {
             resolution: DEFAULT_RESOLUTION,
             centerline: Vec::<Bezier>::new(),
-            edge_curve: [Vec::<Vec<Point>>::new(), Vec::<Vec<Point>>::new()],
+            edge_curve: Vec::<[Vec<Point>; 2]>::new(), //<[Vec::<Point>::new(), Vec::<Point>::new()]>,
             edgeline_curve: None,
             width: 0.0,
             centerline_type: None,
@@ -62,7 +62,7 @@ impl Road {
         }
     }
 
-    fn tangent_points(&self, idx: usize) -> Vec<geometry::Point> {
+    fn tangent_points(&mut self, idx: usize) -> Vec<geometry::Point> {
         let size = (1.0 / self.resolution + 1.0) as usize;
 
         let mut points = Vec::<geometry::Point>::with_capacity(size);
@@ -87,6 +87,27 @@ impl Road {
         }
         points.push(d[2]);
         points
+    }
+
+    fn get_edge_curve(&mut self, idx: usize) {
+        let tangent_points = self.tangent_points(idx);
+        let mut edge_curve = &mut self.edge_curve[idx];
+        let curve = self.centerline[idx].curve();
+        for (t_idx, point) in tangent_points.iter().enumerate() {
+            let mut tan_x = point.x;
+            let mut tan_y = point.y;
+            let normal = (tan_x * tan_x + tan_y * tan_y).sqrt();
+            tan_x /= normal;
+            tan_y /= normal;
+            edge_curve[idx][0] = Point {
+                x: curve[idx].x + tan_y * self.width,
+                y: curve[idx].y - tan_x * self.width,
+            };
+            edge_curve[idx][1] = Point {
+                x: curve[idx].x - tan_y * self.width,
+                y: curve[idx].y + tan_x * self.width,
+            };
+        }
     }
 
     /// Adds a new Bézier segment to an existing feature. Control points 0 and
