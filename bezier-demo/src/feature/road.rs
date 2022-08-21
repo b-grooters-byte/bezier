@@ -1,6 +1,8 @@
 use geometry::{bezier::Bezier, Point};
 
 const DEFAULT_RESOLUTION: f32 = 0.025;
+const DERIVED_CTRL_POINT: usize = 3;
+const DERIVED_CTRL_POINT_MOD: f32 = 3.0;
 
 #[derive(Debug, Clone)]
 pub(crate) enum CenterLine {
@@ -58,6 +60,33 @@ impl Road {
                 // recalculate if an inset edge line is present
             }
         }
+    }
+
+    fn tangent_points(&self, idx: usize) -> Vec<geometry::Point> {
+        let size = (1.0 / self.resolution + 1.0) as usize;
+
+        let mut points = Vec::<geometry::Point>::with_capacity(size);
+
+        let b = &self.centerline[idx];
+        let mut d: [geometry::Point; DERIVED_CTRL_POINT] = [geometry::Point::default(); 3];
+        for idx in 0..DERIVED_CTRL_POINT {
+            d[idx] = DERIVED_CTRL_POINT_MOD * (b.ctrl_point(idx + 1) - b.ctrl_point(idx))
+        }
+        points.push(d[0]);
+        for idx in 1..size - 1 {
+            let t = self.resolution * idx as f32;
+            let current_point = Point {
+                x: d[0].x * (1.0 - t).powf(2.0)
+                    + d[1].x * 2.0 * (1.0 - t) * t
+                    + d[2].x * t.powf(2.0),
+                y: d[0].y * (1.0 - t).powf(2.0)
+                    + d[1].y * 2.0 * (1.0 - t) * t
+                    + d[2].y * t.powf(2.0),
+            };
+            points.push(current_point);
+        }
+        points.push(d[2]);
+        points
     }
 
     /// Adds a new Bézier segment to an existing feature. Control points 0 and

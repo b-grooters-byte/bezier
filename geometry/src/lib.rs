@@ -13,7 +13,7 @@ pub struct Rect {
     pub height: f32,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct Point {
     pub x: f32,
     pub y: f32,
@@ -73,6 +73,28 @@ impl ops::Sub<Point> for Point {
         Point {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
+        }
+    }
+}
+
+impl ops::Mul<f32> for Point {
+    type Output = Point;
+
+    fn mul(self, rhs: f32) -> Self::Output {
+        Point {
+            x: self.x * rhs,
+            y: self.y * rhs,
+        }
+    }
+}
+
+impl ops::Mul<Point> for f32 {
+    type Output = Point;
+
+    fn mul(self, rhs: Point) -> Self::Output {
+        Point {
+            x: self * rhs.x,
+            y: self * rhs.y,
         }
     }
 }
