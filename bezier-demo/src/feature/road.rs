@@ -91,9 +91,9 @@ impl Road {
 
     fn get_edge_curve(&mut self, idx: usize) {
         let tangent_points = self.tangent_points(idx);
-        let mut edge_curve = &mut self.edge_curve[idx];
+        let edge_curve = &mut self.edge_curve[idx];
         let curve = self.centerline[idx].curve();
-        for (t_idx, point) in tangent_points.iter().enumerate() {
+        for (idx, point) in tangent_points.iter().enumerate() {
             let mut tan_x = point.x;
             let mut tan_y = point.y;
             let normal = (tan_x * tan_x + tan_y * tan_y).sqrt();
