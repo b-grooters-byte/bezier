@@ -1,8 +1,11 @@
+use std::process::id;
+
 use geometry::{bezier::Bezier, Point};
 
 const DEFAULT_RESOLUTION: f32 = 0.025;
 const DERIVED_CTRL_POINT: usize = 3;
 const DERIVED_CTRL_POINT_MOD: f32 = 3.0;
+const DEFAULT_ROAD_WIDTH: f32 = 6500.0;
 
 #[derive(Debug, Clone)]
 pub(crate) enum CenterLine {
@@ -29,11 +32,23 @@ impl Road {
             centerline: Vec::<Bezier>::new(),
             edge_curve: Vec::<[Vec<Point>; 2]>::new(), //<[Vec::<Point>::new(), Vec::<Point>::new()]>,
             edgeline_curve: None,
-            width: 0.0,
+            width: DEFAULT_ROAD_WIDTH,
             centerline_type: None,
             edgeline_visible: false,
         }
     }
+
+    pub(crate) fn new_with_attributes(width: f32, centerline_type: Option<CenterLine>, edgeline_visible: bool) -> Self {
+        Road {
+            resolution: DEFAULT_RESOLUTION,
+        centerline: Vec::<Bezier>::new(),
+        edge_curve: Vec::<[Vec<Point>; 2]>::new(), //<[Vec::<Point>::new(), Vec::<Point>::new()]>,
+        edgeline_curve: None,
+        width,
+        centerline_type,
+        edgeline_visible,
+    }
+}
 
     pub(crate) fn resolution(&self) -> f32 {
         self.resolution
@@ -47,19 +62,33 @@ impl Road {
     }
 
     /// Gets the polygon path representing the surface of the road feature
-    pub(crate) fn surface(&mut self) {
+    pub(crate) fn surface(&mut self) -> Vec<&geometry::Point> {
         let recalculate: Vec<bool> = self.centerline.iter().map(|b| b.is_modified()).collect();
-        let points: Vec<&geometry::Point> =
-            self.centerline.iter_mut().flat_map(|b| b.curve()).collect();
+        //        let points: Vec<&geometry::Point> =
+        //            self.centerline.iter_mut().flat_map(|b| b.curve()).collect();
         for (idx, r) in recalculate.iter().enumerate() {
             if *r {
-                // recalculate the edgeline for this segment
-                let points_pi2 = &self.edge_curve[0][idx];
-                let points_2pi = &self.edge_curve[1][idx];
-
+                self.centerline[idx].curve();
+                self.calc_edge_curve(idx);
                 // recalculate if an inset edge line is present
             }
         }
+        let mut points_pi2: Vec<&geometry::Point> = self
+            .edge_curve
+            .iter()
+            .flat_map(|v| v[0].iter())
+            .collect::<Vec<&geometry::Point>>();
+        let mut points_2pi: Vec<&geometry::Point> = self
+            .edge_curve
+            .iter()
+            .flat_map(|v| v[1].iter())
+            .collect::<Vec<&geometry::Point>>();
+
+        let mut polygon = Vec::<&geometry::Point>::with_capacity(points_2pi.len() * 2);
+        polygon.append(&mut points_pi2);
+        polygon.append(&mut points_2pi);
+
+        polygon
     }
 
     fn tangent_points(&mut self, idx: usize) -> Vec<geometry::Point> {
@@ -89,7 +118,7 @@ impl Road {
         points
     }
 
-    fn get_edge_curve(&mut self, idx: usize) {
+    fn calc_edge_curve(&mut self, idx: usize) {
         let tangent_points = self.tangent_points(idx);
         let edge_curve = &mut self.edge_curve[idx];
         let curve = self.centerline[idx].curve();

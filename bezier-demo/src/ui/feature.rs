@@ -1,11 +1,12 @@
 use std::sync::Once;
 
+use windows::Win32::Graphics::Direct2D::Common::{D2D1_FIGURE_BEGIN_FILLED, D2D1_FIGURE_END_CLOSED};
 use windows::core::{Result, HSTRING};
 use windows::w;
 use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, RECT, WPARAM};
 use windows::Win32::Graphics::Direct2D::{
     ID2D1Factory1, ID2D1HwndRenderTarget, ID2D1SolidColorBrush, D2D1_HWND_RENDER_TARGET_PROPERTIES,
-    D2D1_PRESENT_OPTIONS, D2D1_RENDER_TARGET_PROPERTIES,
+    D2D1_PRESENT_OPTIONS, D2D1_RENDER_TARGET_PROPERTIES, ID2D1PathGeometry,
 };
 use windows::Win32::Graphics::Gdi::CreateSolidBrush;
 use windows::Win32::UI::WindowsAndMessaging::{
@@ -16,13 +17,13 @@ use windows::Win32::UI::WindowsAndMessaging::{
 
 use crate::feature::road::Road;
 
-use super::direct2d::create_factory;
+use super::direct2d::{create_factory, create_brush};
 
 static REGISTER_FEATURE_WINDOW_CLASS: Once = Once::new();
 static FEATURE_CLASS_NAME: &HSTRING = w!("bytetrail.window.feature_view");
 
 trait FeatureVisual {
-    fn draw(&mut self);
+    fn draw(&mut self, target: &ID2D1HwndRenderTarget);
 }
 
 impl core::fmt::Debug for dyn FeatureVisual {
@@ -32,26 +33,51 @@ impl core::fmt::Debug for dyn FeatureVisual {
 }
 
 #[derive(Debug)]
-struct RoadVisual {
+struct RoadVisual<'a> {
     road: Road,
-    surface_brush: Option<ID2D1SolidColorBrush>,
-    centerline_brush: Option<ID2D1SolidColorBrush>,
-    edgeline_brush: Option<ID2D1SolidColorBrush>,
+    surface: Option<ID2D1PathGeometry>,
+    surface_brush: Option<&'a ID2D1SolidColorBrush>,
+    centerline_brush: Option<&'a ID2D1SolidColorBrush>,
+    edgeline_brush: Option<&'a ID2D1SolidColorBrush>,
     selected: Option<usize>,
     hover: Option<usize>,
 }
 
-impl RoadVisual {
+impl<'a> RoadVisual<'a> {
     fn new(road_width: f32, centerline: bool, edgeline: bool) -> Self {
-        let road = Road::new();
+        let road = Road::new_with_attributes( road_width, None, false);
         RoadVisual {
             road,
+            surface: None,
             surface_brush: None,
             centerline_brush: None,
             edgeline_brush: None,
             selected: None,
             hover: None,
         }
+    }
+
+    fn create_path(&mut self, factory: &ID2D1Factory1) -> Result<()>{
+        let path_geometry = unsafe { factory.CreatePathGeometry() }?;
+        let sink = unsafe { path_geometry.Open() }?;
+
+        let surface = self.road.surface();
+
+        unsafe {
+            sink.BeginFigure((*surface[0]).into(), D2D1_FIGURE_BEGIN_FILLED);
+            for point in surface.iter().skip(1) {
+                sink.AddLine((**point).into());
+            }
+            sink.AddLine((*surface[0]).into());
+            sink.EndFigure(D2D1_FIGURE_END_CLOSED);
+            sink.Close()?;
+        }
+        self.surface = Some(path_geometry);
+        Ok(())
+    }
+
+    fn set_surface_brush(&mut self, brush: Option<&'a ID2D1SolidColorBrush>) {
+        self.surface_brush = brush;
     }
 
     fn release_device_resources(&mut self) {
@@ -61,9 +87,15 @@ impl RoadVisual {
     }
 }
 
-impl FeatureVisual for RoadVisual {
-    fn draw(&mut self) {
-        let surface = self.road.surface();
+impl<'a> FeatureVisual for RoadVisual<'a> {
+    fn draw(&mut self, target: &ID2D1HwndRenderTarget) {
+        unsafe { target.BeginDraw() };
+        if let Some(surface) = &self.surface {
+            let brush = self.surface_brush.as_ref().unwrap();
+            unsafe {target.FillGeometry(surface, 
+                *brush, None)};
+        }
+        unsafe { target.EndDraw(None, None) };
     }
 }
 
@@ -74,6 +106,10 @@ pub(crate) struct FeatureWindow {
     factory: ID2D1Factory1,
     target: Option<ID2D1HwndRenderTarget>,
     dpi: f32,
+    selected_brush: Option<ID2D1SolidColorBrush>,
+    control_brush: Option<ID2D1SolidColorBrush>,
+    surface_brush: Option<ID2D1SolidColorBrush>,
+    centerline_brush: Option<ID2D1SolidColorBrush>,
 }
 
 impl FeatureWindow {
@@ -106,6 +142,10 @@ impl FeatureWindow {
             factory,
             target: None,
             dpi: dpix,
+            selected_brush: None,
+            control_brush: None,
+            surface_brush: None,
+            centerline_brush: None,
         });
 
         unsafe {
@@ -126,6 +166,26 @@ impl FeatureWindow {
         };
         Ok(view)
     }
+
+    fn render(&mut self) -> Result<()> {
+        // create the device specific resources
+        if self.target == None {
+            //let device = create_device()?;
+            //let target = create_render_target(&self.factory, &device)?;
+            self.create_render_target()?;
+            let target = self.target.as_ref().unwrap();
+            unsafe { target.SetDpi(self.dpi, self.dpi) };
+            self.control_brush = create_brush(target, 0.25, 0.25, 0.25, 1.0).ok();
+            self.selected_brush = create_brush(target, 0.75, 0.0, 0.0, 1.0).ok();
+        }
+        // draw
+        unsafe { self.target.as_ref().unwrap().BeginDraw() };
+        self.feature.as_mut().unwrap().draw(self.target.as_ref().unwrap());
+        unsafe { self.target.as_ref().unwrap().EndDraw(None, None)? };
+        Ok(())
+    }
+    
+
 
     pub(crate) fn create_render_target(&mut self) -> Result<()> {
         unsafe {
@@ -148,6 +208,7 @@ impl FeatureWindow {
 
     fn release_device(&mut self) {
         self.target = None;
+        self.feature = None;
         self.release_device_resources();
     }
 
