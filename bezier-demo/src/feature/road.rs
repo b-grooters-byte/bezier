@@ -38,17 +38,21 @@ impl Road {
         }
     }
 
-    pub(crate) fn new_with_attributes(width: f32, centerline_type: Option<CenterLine>, edgeline_visible: bool) -> Self {
+    pub(crate) fn new_with_attributes(
+        width: f32,
+        centerline_type: Option<CenterLine>,
+        edgeline_visible: bool,
+    ) -> Self {
         Road {
             resolution: DEFAULT_RESOLUTION,
-        centerline: Vec::<Bezier>::new(),
-        edge_curve: Vec::<[Vec<Point>; 2]>::new(), //<[Vec::<Point>::new(), Vec::<Point>::new()]>,
-        edgeline_curve: None,
-        width,
-        centerline_type,
-        edgeline_visible,
+            centerline: Vec::<Bezier>::new(),
+            edge_curve: Vec::<[Vec<Point>; 2]>::new(), //<[Vec::<Point>::new(), Vec::<Point>::new()]>,
+            edgeline_curve: None,
+            width,
+            centerline_type,
+            edgeline_visible,
+        }
     }
-}
 
     pub(crate) fn resolution(&self) -> f32 {
         self.resolution
