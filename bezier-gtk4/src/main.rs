@@ -1,6 +1,8 @@
-use std::sync::{Arc, Mutex};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use geometry::Point;
+use gtk::gdk::ModifierType;
 use gtk::{prelude::*, DrawingArea};
 use gtk::{Application, ApplicationWindow};
 
@@ -16,6 +18,7 @@ trait Draw {
     fn draw_mut(&mut self, context: &cairo::Context);
 }
 
+#[derive(Debug, Clone)]
 struct BezierRender {
     bezier: Bezier,
     selected_ctrl_pt: Option<usize>,
@@ -76,18 +79,15 @@ fn main() {
         .build();
 
     app.connect_activate(|app| {
-        let drag_start = Arc::new(Mutex::new(Point { x: 0.0, y: 0.0 }));
-
         let mut b = Bezier::new(0.025);
         b.set_ctrl_point(Point { x: 50.0, y: 0.0 }, 1);
         b.set_ctrl_point(Point { x: 100.0, y: 100.0 }, 2);
         b.set_ctrl_point(Point { x: 150.0, y: 100.0 }, 3);
-        let r = BezierRender {
+        let render_context = BezierRender {
             bezier: b,
             selected_ctrl_pt: None,
         };
-
-        let bezier = Arc::new(Mutex::new(r));
+        let context = Rc::new(RefCell::new(render_context));
 
         let window = ApplicationWindow::builder()
             .application(app)
@@ -101,17 +101,17 @@ fn main() {
             .hexpand(true)
             .vexpand(true)
             .build();
-        let bezier_draw = bezier.clone();
+        let bezier_draw = context.clone();
         view.set_draw_func(move |_area, ctx, _width, _height| {
-            let mut b = bezier_draw.lock().unwrap();
+            let mut b = bezier_draw.borrow_mut();
             b.draw_mut(ctx);
         });
         // connect the mouse button gesture
         let g = gtk::GestureClick::new();
         view.add_controller(&g);
-        let bezier_pressed = bezier.clone();
+        let bezier_pressed = context.clone();
         g.connect_pressed(move |_g, _i, x, y| {
-            let mut b = bezier_pressed.lock().unwrap();
+            let mut b = bezier_pressed.borrow_mut();
             for (i, p) in b.bezier.ctrl_points().iter().enumerate() {
                 if p.distance(&Point {
                     x: x as f32,
@@ -123,44 +123,46 @@ fn main() {
                 }
             }
         });
-
-        let d = gtk::GestureDrag::new();
-        view.add_controller(&d);
         window.set_child(Some(&view));
-        let view_guard = Arc::new(Mutex::new(view));
+
+        let m = gtk::EventControllerMotion::new();
+        view.add_controller(&m);
+        let view_guard = RefCell::new(view);
         let view_drag_update = view_guard.clone();
-        let bezier_drag = bezier.clone();
-        let drag_initial = drag_start.clone();
-        d.connect_drag_update(move |_g, cx, cy| {
-            if let Ok(mut b) = bezier_drag.lock() {
-                if let Some(selected) = b.selected_ctrl_pt {
+        let bezier_drag = context.clone();
+
+        m.connect_motion(move |controller, x, y| {
+            let event = controller.current_event().unwrap();
+            let modifiers = event.modifier_state();
+            let mut render_context = bezier_drag.borrow_mut();
+            if modifiers.bits() & ModifierType::BUTTON1_MASK.bits() != 0 {
+                if let Some(selected) = render_context.selected_ctrl_pt {
                     // move the control point
-                    let p = drag_initial.lock().unwrap();
-                    b.bezier.set_ctrl_point(
+                    render_context.bezier.set_ctrl_point(
                         Point {
-                            x: p.x + cx as f32,
-                            y: p.y + cy as f32,
+                            x: x as f32,
+                            y: y as f32,
                         },
                         selected,
                     );
-                    view_drag_update.lock().unwrap().queue_draw();
+                    view_drag_update.borrow_mut().queue_draw();
                 }
-            }
-        });
-        // set the initial offset
-        let drag_begin = drag_start;
-        d.connect_drag_begin(move |_g, x, y| {
-            let mut p = drag_begin.lock().unwrap();
-            p.x = x as f32;
-            p.y = y as f32;
-        });
-        // repaint on drag end and set selected to none
-        let bezier_drag = bezier;
-        let view_drag_update = view_guard;
-        d.connect_drag_end(move |_g, _x, _y| {
-            if let Ok(mut b) = bezier_drag.lock() {
-                b.selected_ctrl_pt = None;
-                view_drag_update.lock().unwrap().queue_draw();
+            } else {
+                let prev_selected: Option<usize> = render_context.selected_ctrl_pt;
+                render_context.selected_ctrl_pt = None;
+                for (i, p) in render_context.bezier.ctrl_points().iter().enumerate() {
+                    if p.distance(&Point {
+                        x: x as f32,
+                        y: y as f32,
+                    }) < HANDLE_RADIUS
+                    {
+                        render_context.selected_ctrl_pt = Some(i);
+                        break;
+                    }
+                }
+                if prev_selected != render_context.selected_ctrl_pt {
+                    view_drag_update.borrow_mut().queue_draw();
+                }
             }
         });
         window.show();

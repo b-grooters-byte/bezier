@@ -8,10 +8,10 @@ use windows::{
         Graphics::Gdi::CreateSolidBrush,
         System::LibraryLoader::GetModuleHandleW,
         UI::WindowsAndMessaging::{
-            CreateWindowExW, DefWindowProcW, GetWindowLongPtrA, LoadCursorW, MoveWindow,
-            PostQuitMessage, RegisterClassW, SetWindowLongPtrA, ShowWindow, COLOR_WINDOW,
-            CREATESTRUCTA, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, GWLP_USERDATA, HMENU, IDC_ARROW,
-            SW_SHOW, WINDOW_EX_STYLE, WM_CREATE, WM_DESTROY, WM_SIZE, WNDCLASSW,
+            CreateWindowExW, DefWindowProcW, EnumChildWindows, GetWindowLongPtrA, LoadCursorW,
+            MoveWindow, PostQuitMessage, RegisterClassW, SetWindowLongPtrA, ShowWindow,
+            COLOR_WINDOW, CREATESTRUCTA, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, GWLP_USERDATA,
+            HMENU, IDC_ARROW, SW_SHOW, WINDOW_EX_STYLE, WM_CREATE, WM_DESTROY, WM_SIZE, WNDCLASSW,
             WS_OVERLAPPEDWINDOW, WS_VISIBLE,
         },
     },
@@ -72,13 +72,7 @@ impl MainWindow {
         Ok(main_window)
     }
 
-    fn message_loop(
-        &mut self,
-        window: HWND,
-        message: u32,
-        wparam: WPARAM,
-        lparam: LPARAM,
-    ) -> LRESULT {
+    fn message_loop(&mut self, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
         match message {
             WM_CREATE => {
                 let result = unsafe { GetModuleHandleW(None) };
@@ -96,6 +90,7 @@ impl MainWindow {
                 }
             }
             WM_SIZE => {
+                println!("PARENT WM_SIZE");
                 let cx = lparam.0 & 0x0000_FFFF;
                 let cy = (lparam.0 & 0xFFFF_0000) >> 16;
                 unsafe {
@@ -106,7 +101,8 @@ impl MainWindow {
                         cx as i32,
                         cy as i32,
                         true,
-                    )
+                    );
+                    ShowWindow(self.feature_wnd.as_ref().unwrap().handle, SW_SHOW)
                 };
 
                 LRESULT(0)
@@ -115,7 +111,7 @@ impl MainWindow {
                 unsafe { PostQuitMessage(0) };
                 LRESULT(0)
             }
-            _ => unsafe { DefWindowProcW(window, message, wparam, lparam) },
+            _ => unsafe { DefWindowProcW(self.handle, message, wparam, lparam) },
         }
     }
 
@@ -135,7 +131,7 @@ impl MainWindow {
         let this = GetWindowLongPtrA(window, GWLP_USERDATA) as *mut Self;
 
         if !this.is_null() {
-            return (*this).message_loop(window, message, wparam, lparam);
+            return (*this).message_loop(message, wparam, lparam);
         }
 
         DefWindowProcW(window, message, wparam, lparam)
