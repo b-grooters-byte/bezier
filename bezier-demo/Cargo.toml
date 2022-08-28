@@ -8,3 +8,4 @@ clap = { vrsion ="3.2", features = ["derive"] }
 geometry = {path = "../geometry", version="0.1", features=["direct2d"]}
 cairo-rs = "0.15.1"
 gtk = { version = "0.4", package = "gtk4" }
+glib = "0.15"

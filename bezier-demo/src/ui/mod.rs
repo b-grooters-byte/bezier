@@ -1,1 +1,2 @@
-pub mod feature;
+mod feature;
+pub mod featureviewwidget;
