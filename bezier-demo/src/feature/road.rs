@@ -1,5 +1,3 @@
-use std::process::id;
-
 use geometry::{bezier::Bezier, Point};
 
 const DEFAULT_RESOLUTION: f32 = 0.025;
@@ -30,7 +28,7 @@ impl Road {
         Road {
             resolution: DEFAULT_RESOLUTION,
             centerline: Vec::<Bezier>::new(),
-            edge_curve: Vec::<[Vec<Point>; 2]>::new(), //<[Vec::<Point>::new(), Vec::<Point>::new()]>,
+            edge_curve: Vec::<[Vec<Point>; 2]>::new(),
             edgeline_curve: None,
             width: DEFAULT_ROAD_WIDTH,
             centerline_type: None,
@@ -46,7 +44,7 @@ impl Road {
         Road {
             resolution: DEFAULT_RESOLUTION,
             centerline: Vec::<Bezier>::new(),
-            edge_curve: Vec::<[Vec<Point>; 2]>::new(), //<[Vec::<Point>::new(), Vec::<Point>::new()]>,
+            edge_curve: Vec::<[Vec<Point>; 2]>::new(),
             edgeline_curve: None,
             width,
             centerline_type,

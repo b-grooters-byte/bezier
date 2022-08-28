@@ -6,25 +6,5 @@ edition = "2021"
 [dependencies]
 clap = { vrsion ="3.2", features = ["derive"] }
 geometry = {path = "../geometry", version="0.1", features=["direct2d"]}
-
-[dependencies.windows]
-path = "../../windows-rs/crates/libs/windows"
-features = [
-    "Foundation",
-    "Foundation_Numerics",
-    "Win32_System_SystemInformation",
-    "Win32_Foundation",
-    "Win32_System_Performance", 
-    "Win32_System_Com",
-    "Win32_System_LibraryLoader",
-    "Win32_UI_WindowsAndMessaging",
-    "Win32_UI_Animation",
-    "Win32_Graphics",
-    "Win32_Graphics_Gdi",
-    "Win32_Graphics_Direct2D",
-    "Win32_Graphics_Direct2D_Common",
-    "Win32_Graphics_Direct3D",
-    "Win32_Graphics_Direct3D11",
-    "Win32_Graphics_Dxgi",
-    "Win32_Graphics_Dxgi_Common",
-]
+cairo-rs = "0.15.1"
+gtk = { version = "0.4", package = "gtk4" }

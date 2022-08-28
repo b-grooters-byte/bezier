@@ -1,9 +1,5 @@
 use clap::{ArgEnum, Parser};
-use ui::MainWindow;
-use windows::Win32::{
-    Foundation::HWND,
-    UI::WindowsAndMessaging::{DispatchMessageW, GetMessageW, TranslateMessage, MSG},
-};
+use gtk::{prelude::ApplicationExt, traits::WidgetExt, Application, ApplicationWindow};
 
 mod feature;
 mod ui;
@@ -25,17 +21,19 @@ struct Args {
     segments: Option<u8>,
 }
 
-fn main() -> windows::core::Result<()> {
-    let _args = Args::parse();
+fn main() {
+    let app = Application::builder()
+        .application_id("org.bytetrail.Bezier")
+        .build();
 
-    let _ = MainWindow::new("Bézier Demo");
-    let mut message = MSG::default();
-    unsafe {
-        while GetMessageW(&mut message, HWND(0), 0, 0).into() {
-            TranslateMessage(&message);
-            DispatchMessageW(&message);
-        }
-    }
+    app.connect_activate(|app| {
+        let window = ApplicationWindow::builder()
+            .application(app)
+            .default_width(800)
+            .default_height(600)
+            .title("Bézier Curves")
+            .build();
 
-    Ok(())
+        window.show();
+    });
 }
