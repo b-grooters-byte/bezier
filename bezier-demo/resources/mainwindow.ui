@@ -11,6 +11,23 @@
             <property name="margin-start">10</property>
             <property name="margin-end">10</property>
             <property name="spacing">5</property>
+          <child>
+            <object class="GtkToggleButton" id="road_toggle">
+              <property name="label">Road</property>
+            </object>
+          </child>
+          <child>
+            <object class="GtkToggleButton" id="river_toggle">
+              <property name="label">Road</property>
+              <property name="group">road_toggle</property>
+            </object>
+          </child>
+          <child>
+            <object class="GtkToggleButton" id="railroad_toggle">
+              <property name="label">Road</property>
+              <property name="group">road_toggle</property>
+            </object>
+          </child>
         </object>
       </child>
     </template>
