@@ -4,6 +4,8 @@ use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::CompositeTemplate;
 
+use self::featureviewwidget::FeatureViewWidget;
+
 mod feature;
 pub mod featureviewwidget;
 
@@ -29,6 +31,8 @@ pub struct MainWindowImpl {
    pub river_toggle: TemplateChild<gtk::ToggleButton>,
    #[template_child]
    pub railroad_toggle: TemplateChild<gtk::ToggleButton>,
+   #[template_child]
+   pub feature_view: TemplateChild<FeatureViewWidget>
 }
 
 #[glib::object_subclass]
