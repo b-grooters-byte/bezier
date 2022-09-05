@@ -5,8 +5,11 @@ edition = "2021"
 
 [dependencies]
 clap = { vrsion ="3.2", features = ["derive"] }
-geometry = {path = "../geometry", version="0.1", features=["direct2d"]}
+geometry = {path = "../geometry", version="0.1"}
 cairo-rs = "0.15.1"
 gtk = { version = "0.4", package = "gtk4" }
 glib = "0.15"
 gio = "0.15" 
+
+[build-dependencies]
+gtk = { version = "*", package = "gtk4" }

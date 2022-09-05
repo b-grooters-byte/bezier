@@ -1,3 +1,4 @@
+use glib::BoolError;
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
@@ -14,16 +15,16 @@ glib::wrapper! {
 }
 
 impl MainWindow {
-    pub fn new(app: &gio::Application) -> Self {
-        glib::Object::new(&[("application", app)]).expect("Failed to create window")
+    pub fn new(app: &gtk::Application) -> Self {
+        glib::Object::new(&[("application", app)]).expect("unable to create main window")
     }
 }
 
 #[derive(CompositeTemplate, Default)]
-#[template(resource = "mainwindow.ui")]
+#[template(resource = "/org/bytetrail/demo/mainwindow.ui")]
 pub struct MainWindowImpl {
-    #[template_child]
-    pub radio: TemplateChild<gtk::ToggleButton>,
+   // #[template_child]
+   // pub radio: TemplateChild<gtk::ToggleButton>,
 }
 
 #[glib::object_subclass]
