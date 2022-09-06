@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-clap = { vrsion ="3.2", features = ["derive"] }
+clap = { version ="3.2", features = ["derive"] }
 geometry = {path = "../geometry", version="0.1"}
 cairo-rs = "0.15.1"
 gtk = { version = "0.4", package = "gtk4" }

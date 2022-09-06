@@ -25,14 +25,14 @@ impl MainWindow {
 #[derive(CompositeTemplate, Default)]
 #[template(resource = "/org/bytetrail/demo/mainwindow.ui")]
 pub struct MainWindowImpl {
-   #[template_child]
-   pub road_toggle: TemplateChild<gtk::ToggleButton>,
-   #[template_child]
-   pub river_toggle: TemplateChild<gtk::ToggleButton>,
-   #[template_child]
-   pub railroad_toggle: TemplateChild<gtk::ToggleButton>,
-   #[template_child]
-   pub feature_view: TemplateChild<FeatureViewWidget>
+    #[template_child]
+    pub road_toggle: TemplateChild<gtk::ToggleButton>,
+    #[template_child]
+    pub river_toggle: TemplateChild<gtk::ToggleButton>,
+    #[template_child]
+    pub railroad_toggle: TemplateChild<gtk::ToggleButton>,
+    #[template_child]
+    pub feature_view: TemplateChild<FeatureViewWidget>,
 }
 
 #[glib::object_subclass]

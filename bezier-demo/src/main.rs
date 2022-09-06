@@ -24,8 +24,8 @@ struct Args {
 }
 
 fn main() {
-
-    gio::resources_register_include!("bezier_demo.gresource").expect("failed to registerr resources");
+    gio::resources_register_include!("bezier_demo.gresource")
+        .expect("failed to register resources");
     let app = Application::builder()
         .application_id("org.bytetrail.Bezier")
         .build();

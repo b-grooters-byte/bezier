@@ -14,15 +14,15 @@ impl core::fmt::Debug for dyn FeatureVisual {
     }
 }
 
-#[derive(Debug)]
-struct RoadVisual {
+#[derive(Debug, Clone)]
+pub struct RoadVisual {
     road: Road,
     selected: Option<usize>,
     hover: Option<usize>,
 }
 
 impl RoadVisual {
-    fn new(road_width: f32, centerline: Option<CenterLine>, edgeline: bool) -> Self {
+    pub(crate) fn new(road_width: f32, centerline: Option<CenterLine>, edgeline: bool) -> Self {
         let road = Road::new_with_attributes(road_width, centerline, edgeline);
         RoadVisual {
             road,

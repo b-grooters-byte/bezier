@@ -3,7 +3,8 @@ use geometry::{bezier::Bezier, Point};
 const DEFAULT_RESOLUTION: f32 = 0.025;
 const DERIVED_CTRL_POINT: usize = 3;
 const DERIVED_CTRL_POINT_MOD: f32 = 3.0;
-const DEFAULT_ROAD_WIDTH: f32 = 6500.0;
+
+pub const DEFAULT_ROAD_WIDTH: f32 = 6500.0;
 
 #[derive(Debug, Clone)]
 pub(crate) enum CenterLine {

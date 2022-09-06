@@ -4,6 +4,6 @@ fn main() {
     gio::compile_resources(
         "resources",
         "resources/resources.gresource.xml",
-        "bezier_demo.gresource"
+        "bezier_demo.gresource",
     );
 }
