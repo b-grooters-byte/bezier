@@ -41,6 +41,7 @@
           <child>
             <object class="FeatureViewWidget" id="feature_view">
               <property name="feature-type">0</property>
+              <property name="zoom">1.0</property>
             </object>
           </child>
         </object>

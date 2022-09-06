@@ -53,7 +53,7 @@ impl ObjectSubclass for FeatureViewPriv {
                 Some(CenterLine::Solid),
                 false,
             )),
-            map_scale: Cell::new(200.0),
+            zoom: Cell::new(1.0),
         }
     }
 }
@@ -70,7 +70,7 @@ impl DrawingAreaImpl for FeatureViewPriv {
 pub struct FeatureViewPriv {
     feature_type: Cell<FeatureType>,
     feature: Cell<RoadVisual>,
-    map_scale: Cell<f32>,
+    zoom: Cell<f32>,
 }
 
 impl ObjectImpl for FeatureViewPriv {
@@ -82,7 +82,7 @@ impl ObjectImpl for FeatureViewPriv {
         static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
             vec![Signal::builder(
                 // Signal name
-                "maximum-segment-count",
+                "zoom-change",
                 // Types of the values which will be sent to the signal handler
                 &[i32::static_type().into()],
                 // Type of the value the signal handler sends back
@@ -105,12 +105,12 @@ impl ObjectImpl for FeatureViewPriv {
                     ParamFlags::READWRITE,
                 ),
                 ParamSpecFloat::new(
-                    "map-scale",
-                    "scale",
-                    "Map scale",
-                    10.0,
-                    1e10,
-                    200.0,
+                    "zoom",
+                    "zoom",
+                    "visual zoom",
+                    1e-1,
+                    1e3,
+                    1.0,
                     ParamFlags::READWRITE,
                 ),
             ]
@@ -132,6 +132,10 @@ impl ObjectImpl for FeatureViewPriv {
                     .expect("type conformity check: Object::set_property");
                 self.feature_type.set(feature_type);
             }
+            "zoom" => {
+                let zoom = value.get().expect("zoom must be a valid float between 1e-1 and 2e3");
+                self.zoom.set(zoom);
+            }
             _ => unimplemented!(),
         }
     }
@@ -139,6 +143,7 @@ impl ObjectImpl for FeatureViewPriv {
     fn property(&self, _obj: &Self::Type, _id: usize, pspec: &glib::ParamSpec) -> glib::Value {
         match pspec.name() {
             "feature-type" => self.feature_type.get().to_value(),
+            "zoom" => self.zoom.get().to_value(),
             _ => unimplemented!(),
         }
     }
