@@ -31,8 +31,19 @@ impl RoadVisual {
         }
     }
 
-    fn draw_surface(&mut self, context: &cairo::Context) {
+    fn draw_surface(&mut self, context: &cairo::Context) -> Result<(), cairo::Error> {
         let surface = self.road.surface();
+        context.move_to(surface[0].x as f64, surface[0].y as f64);
+        for (_, point) in surface.iter().enumerate().skip(1) {
+            context.line_to(point.x as f64, point.y as f64);
+        }
+        context.line_to(surface[0].x as f64, surface[0].y as f64);
+        context.set_source_rgb(0.75, 0.75, 0.75);
+        context.fill()?;
+        context.set_line_width(1.0);
+        context.set_source_rgb(0., 0., 0.);
+        context.stroke()?;
+        Ok(())
     }
 }
 
