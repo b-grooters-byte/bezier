@@ -18,7 +18,8 @@ glib::wrapper! {
 
 impl MainWindow {
     pub fn new(app: &gtk::Application) -> Self {
-        glib::Object::new(&[("application", app)]).expect("unable to create main window")
+        let mut main_win = glib::Object::new(&[("application", app)]).expect("unable to create main window");
+        main_win
     }
 }
 
@@ -33,6 +34,7 @@ pub struct MainWindowImpl {
     pub railroad_toggle: TemplateChild<gtk::ToggleButton>,
     #[template_child]
     pub feature_view: TemplateChild<FeatureViewWidget>,
+
 }
 
 #[glib::object_subclass]

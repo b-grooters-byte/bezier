@@ -48,11 +48,6 @@ impl ObjectSubclass for FeatureViewPriv {
     fn new() -> Self {
         Self {
             feature_type: Cell::new(FeatureType::Road),
-            feature: Cell::new(RoadVisual::new(
-                DEFAULT_ROAD_WIDTH,
-                Some(CenterLine::Solid),
-                false,
-            )),
             zoom: Cell::new(1.0),
         }
     }
@@ -69,7 +64,6 @@ impl DrawingAreaImpl for FeatureViewPriv {
 
 pub struct FeatureViewPriv {
     feature_type: Cell<FeatureType>,
-    feature: Cell<RoadVisual>,
     zoom: Cell<f32>,
 }
 
