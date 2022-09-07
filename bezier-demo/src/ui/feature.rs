@@ -1,6 +1,6 @@
 use geometry::{bezier::Bezier, Point};
 
-use geometry::{bezier::Bezier, Point};
+use std::sync::Once;
 use windows::{
     core::HRESULT,
     Win32::{
@@ -32,9 +32,9 @@ use windows::{
         },
         UI::WindowsAndMessaging::{
             CreateWindowExW, DefWindowProcW, LoadCursorW, PostQuitMessage, RegisterClassW,
-            ShowWindow, COLOR_WINDOW, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, HMENU, IDC_ARROW,
-            MK_LBUTTON, SW_SHOW, WINDOW_EX_STYLE, WM_DESTROY, WM_MOUSEMOVE, WM_PAINT, WM_SIZE,
-            WNDCLASSW, WS_OVERLAPPEDWINDOW, WS_VISIBLE,
+            COLOR_WINDOW, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, HMENU, IDC_ARROW,
+            MK_LBUTTON, WINDOW_EX_STYLE, WM_DESTROY, WM_MOUSEMOVE, WM_PAINT, WM_SIZE,
+            WNDCLASSW, WS_VISIBLE,
         },
     },
 };
@@ -132,7 +132,7 @@ impl FeatureWindow {
         });
 
         // create the window using Self reference
-        let window = unsafe {
+        let _window = unsafe {
             CreateWindowExW(
                 WINDOW_EX_STYLE::default(),
                 FEATURE_WINDOW_CLASS_NAME,

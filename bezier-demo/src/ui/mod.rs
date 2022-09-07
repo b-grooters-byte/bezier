@@ -1,4 +1,6 @@
-use self::feature::FeatureWindow;
+mod direct2d;
+mod feature;
+
 use std::sync::Once;
 use windows::{
     core::HSTRING,
@@ -10,7 +12,7 @@ use windows::{
         UI::WindowsAndMessaging::{
             CreateWindowExW, DefWindowProcW, GetWindowLongPtrA, LoadCursorW, MoveWindow,
             PostQuitMessage, RegisterClassW, SendMessageW, SetWindowLongPtrA, ShowWindow,
-            BM_SETCHECK, BS_GROUPBOX, BS_RADIOBUTTON, COLOR_BACKGROUND, COLOR_WINDOW,
+            BM_SETCHECK, BS_GROUPBOX, BS_RADIOBUTTON, COLOR_WINDOW,
             CREATESTRUCTA, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, GWLP_USERDATA, HMENU, IDC_ARROW,
             SW_SHOW, WINDOW_EX_STYLE, WINDOW_STYLE, WM_COMMAND, WM_CREATE, WM_DESTROY, WM_SIZE,
             WNDCLASSW, WS_CHILD, WS_OVERLAPPEDWINDOW, WS_VISIBLE,
@@ -18,8 +20,8 @@ use windows::{
     },
 };
 
+use self::feature::FeatureWindow;
 
-use self::featureviewwidget::FeatureViewWidget;
 
 const IDC_BUTTON_ROAD: i32 = 101;
 const IDC_BUTTON_RIVER: i32 = 102;
@@ -93,7 +95,7 @@ impl MainWindow {
         match message {
             WM_COMMAND => {
                 let ctrl_id =(wparam.0 & 0x0000_FFFF) as i32;
-                if ctrl_id >= IDC_BUTTON_ROAD && ctrl_id <= IDC_BUTTON_RAILROAD {
+                if (IDC_BUTTON_ROAD..=IDC_BUTTON_RAILROAD).contains(&ctrl_id) {
                     self.set_feature(ctrl_id);
                 } 
                 LRESULT(0)
@@ -106,7 +108,7 @@ impl MainWindow {
                         // TODO manage errors
                         self.feature_wnd = Some(feature_wnd.unwrap());
 
-                        let hwnd = unsafe {
+                        let _hwnd = unsafe {
                             CreateWindowExW(
                                 WINDOW_EX_STYLE::default(),
                                 &HSTRING::from("button"),
