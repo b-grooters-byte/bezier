@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-clap = { vrsion ="3.2", features = ["derive"] }
 geometry = {path = "../geometry", version="0.1", features=["direct2d"]}
 
 [dependencies.windows]

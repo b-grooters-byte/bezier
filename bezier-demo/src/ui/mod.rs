@@ -84,7 +84,7 @@ impl MainWindow {
                 let result = unsafe { GetModuleHandleW(None) };
                 match result {
                     Ok(instance) => {
-                        let feature_wnd = FeatureWindow::new(instance, self.handle);
+                        let feature_wnd = FeatureWindow::new(self.handle);
                         // TODO manage errors
                         self.feature_wnd = Some(feature_wnd.unwrap());
                         LRESULT(0)
