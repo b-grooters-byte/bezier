@@ -1,10 +1,11 @@
 [package]
 name = "bezier-demo"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 
 [dependencies]
 geometry = {path = "../geometry", version="0.1", features=["direct2d"]}
+clap = { version ="3.2", features = ["derive"] }
 
 [dependencies.windows]
 path = "../../windows-rs/crates/libs/windows"

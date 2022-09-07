@@ -18,8 +18,8 @@ use windows::{
     },
 };
 
-mod direct2d;
-mod feature;
+
+use self::featureviewwidget::FeatureViewWidget;
 
 const IDC_BUTTON_ROAD: i32 = 101;
 const IDC_BUTTON_RIVER: i32 = 102;
@@ -175,8 +175,9 @@ impl MainWindow {
             _ => unsafe { DefWindowProcW(window, message, wparam, lparam) },
         }
     }
+}
 
-    fn set_feature(&mut self, control_id: i32) {
+fn set_feature(&mut self, control_id: i32) {
         match control_id {
             IDC_BUTTON_ROAD => unsafe {
                 SendMessageW(self.road_rb, BM_SETCHECK, WPARAM(1), LPARAM(0));
@@ -232,7 +233,6 @@ impl MainWindow {
             let create_struct = lparam.0 as *const CREATESTRUCTA;
             let this = (*create_struct).lpCreateParams as *mut Self;
             (*this).handle = window;
-
             SetWindowLongPtrA(window, GWLP_USERDATA, this as _);
         }
         let this = GetWindowLongPtrA(window, GWLP_USERDATA) as *mut Self;
@@ -240,7 +240,6 @@ impl MainWindow {
         if !this.is_null() {
             return (*this).message_loop(window, message, wparam, lparam);
         }
-
         DefWindowProcW(window, message, wparam, lparam)
     }
 }
