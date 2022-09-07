@@ -5,14 +5,14 @@ use windows::{
     w,
     Win32::{
         Foundation::{GetLastError, HINSTANCE, HWND, LPARAM, LRESULT, WPARAM},
-        Graphics::Gdi::CreateSolidBrush,
+        Graphics::Gdi::{HBRUSH},
         System::LibraryLoader::GetModuleHandleW,
-        UI::WindowsAndMessaging::{
+        UI::WindowsAndMessaging::{ 
             CreateWindowExW, DefWindowProcW, GetWindowLongPtrA, LoadCursorW, MoveWindow,
             PostQuitMessage, RegisterClassW, SetWindowLongPtrA, ShowWindow, COLOR_WINDOW,
             CREATESTRUCTA, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, GWLP_USERDATA, HMENU, IDC_ARROW,
             SW_SHOW, WINDOW_EX_STYLE, WM_CREATE, WM_DESTROY, WM_SIZE, WNDCLASSW,
-            WS_OVERLAPPEDWINDOW, WS_VISIBLE,
+            WS_OVERLAPPEDWINDOW, WS_VISIBLE, WS_CHILD, BS_RADIOBUTTON, WINDOW_STYLE, COLOR_BACKGROUND, BS_GROUPBOX,
         },
     },
 };
@@ -36,7 +36,7 @@ impl MainWindow {
             // use defaults for all other fields
             let class = WNDCLASSW {
                 lpfnWndProc: Some(Self::wnd_proc),
-                hbrBackground: unsafe { CreateSolidBrush(COLOR_WINDOW.0) },
+                hbrBackground: HBRUSH(COLOR_WINDOW.0 as isize),
                 hInstance: instance,
                 style: CS_HREDRAW | CS_VREDRAW,
                 hCursor: unsafe { LoadCursorW(HINSTANCE(0), IDC_ARROW).ok().unwrap() },
@@ -87,6 +87,23 @@ impl MainWindow {
                         let feature_wnd = FeatureWindow::new(self.handle);
                         // TODO manage errors
                         self.feature_wnd = Some(feature_wnd.unwrap());
+
+                        let hwnd = unsafe { 
+                            CreateWindowExW(
+                            WINDOW_EX_STYLE::default(),
+                             &HSTRING::from("button"),
+                              &HSTRING::from("Feature Type"), 
+                        WS_CHILD | WS_VISIBLE | WINDOW_STYLE(BS_GROUPBOX as u32),
+                         10, 10, 125, 110, 
+                         self.handle, 
+                         HMENU(100),
+                          instance,
+                          std::ptr::null_mut())
+                            };
+                        MainWindow::create_selector(hwnd, instance, 20, "Road", 101);
+                        MainWindow::create_selector(hwnd, instance, 45, "River", 102);
+                        MainWindow::create_selector(hwnd, instance, 70, "Railroad", 103);
+
                         LRESULT(0)
                     }
                     Err(_e) => {
@@ -101,7 +118,7 @@ impl MainWindow {
                 unsafe {
                     MoveWindow(
                         self.feature_wnd.as_ref().unwrap().handle,
-                        100,
+                        140,
                         0,
                         cx as i32,
                         cy as i32,
@@ -117,6 +134,26 @@ impl MainWindow {
             }
             _ => unsafe { DefWindowProcW(window, message, wparam, lparam) },
         }
+    }
+
+    fn create_selector(parent: HWND, instance: HINSTANCE, y_off: i32, label: &str, id: isize) -> HWND{
+        unsafe {
+            CreateWindowExW(
+                WINDOW_EX_STYLE::default(),
+                &HSTRING::from("button"),
+                &HSTRING::from(label),
+                WS_CHILD | WS_VISIBLE | WINDOW_STYLE(BS_RADIOBUTTON as u32),
+                10,
+                y_off, 
+                110,
+                20,
+                parent,
+                HMENU(id),
+                instance,
+                std::ptr::null_mut(),
+            )
+        }
+
     }
 
     unsafe extern "system" fn wnd_proc(
