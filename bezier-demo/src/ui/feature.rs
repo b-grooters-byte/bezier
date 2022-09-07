@@ -16,7 +16,8 @@ use windows::{
         System::LibraryLoader::GetModuleHandleW,
         UI::WindowsAndMessaging::{
             GetClientRect, GetWindowLongPtrA, SetWindowLongPtrA, CREATESTRUCTA, GWLP_USERDATA,
-            WM_CREATE, WM_LBUTTONDOWN, WM_LBUTTONUP, WS_CLIPSIBLINGS, WS_CHILDWINDOW, WS_VSCROLL, WS_HSCROLL,
+            WM_CREATE, WM_LBUTTONDOWN, WM_LBUTTONUP, WS_CHILDWINDOW, WS_CLIPSIBLINGS, WS_HSCROLL,
+            WS_VSCROLL,
         },
     },
 };
@@ -147,7 +148,7 @@ impl FeatureWindow {
                 window_internal.as_mut() as *mut _ as _,
             )
         };
-//        unsafe { ShowWindow(window, SW_SHOW) };
+        //        unsafe { ShowWindow(window, SW_SHOW) };
         Ok(window_internal)
     }
 

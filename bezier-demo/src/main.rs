@@ -5,8 +5,6 @@ use windows::Win32::{
     UI::WindowsAndMessaging::{DispatchMessageW, GetMessageW, MSG},
 };
 
-
-
 fn main() -> windows::core::Result<()> {
     let _m = ui::MainWindow::new("Bézier Demo");
     let mut message = MSG::default();
@@ -17,5 +15,3 @@ fn main() -> windows::core::Result<()> {
     }
     Ok(())
 }
-
-

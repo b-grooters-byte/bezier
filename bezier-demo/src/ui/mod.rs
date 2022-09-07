@@ -5,14 +5,15 @@ use windows::{
     w,
     Win32::{
         Foundation::{GetLastError, HINSTANCE, HWND, LPARAM, LRESULT, WPARAM},
-        Graphics::Gdi::{HBRUSH},
+        Graphics::Gdi::HBRUSH,
         System::LibraryLoader::GetModuleHandleW,
-        UI::WindowsAndMessaging::{ 
+        UI::WindowsAndMessaging::{
             CreateWindowExW, DefWindowProcW, GetWindowLongPtrA, LoadCursorW, MoveWindow,
-            PostQuitMessage, RegisterClassW, SetWindowLongPtrA, ShowWindow, COLOR_WINDOW,
+            PostQuitMessage, RegisterClassW, SendMessageW, SetWindowLongPtrA, ShowWindow,
+            BM_SETCHECK, BS_GROUPBOX, BS_RADIOBUTTON, COLOR_BACKGROUND, COLOR_WINDOW,
             CREATESTRUCTA, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, GWLP_USERDATA, HMENU, IDC_ARROW,
-            SW_SHOW, WINDOW_EX_STYLE, WM_CREATE, WM_DESTROY, WM_SIZE, WNDCLASSW,
-            WS_OVERLAPPEDWINDOW, WS_VISIBLE, WS_CHILD, BS_RADIOBUTTON, WINDOW_STYLE, COLOR_BACKGROUND, BS_GROUPBOX,
+            SW_SHOW, WINDOW_EX_STYLE, WINDOW_STYLE, WM_COMMAND, WM_CREATE, WM_DESTROY, WM_SIZE,
+            WNDCLASSW, WS_CHILD, WS_OVERLAPPEDWINDOW, WS_VISIBLE,
         },
     },
 };
@@ -20,12 +21,19 @@ use windows::{
 mod direct2d;
 mod feature;
 
+const IDC_BUTTON_ROAD: i32 = 101;
+const IDC_BUTTON_RIVER: i32 = 102;
+const IDC_BUTTON_RAILROAD: i32 = 103;
+
 static REGISTER_WINDOW_CLASS: Once = Once::new();
 static WINDOW_CLASS_NAME: &HSTRING = w!("bytetrail.window.bezier_demo_main");
 
 pub(crate) struct MainWindow {
     handle: HWND,
     feature_wnd: Option<Box<FeatureWindow>>,
+    road_rb: Option<HWND>,
+    river_rb: Option<HWND>,
+    railroad_rb: Option<HWND>,
 }
 
 impl MainWindow {
@@ -49,6 +57,9 @@ impl MainWindow {
         let mut main_window = Box::new(MainWindow {
             handle: HWND(0),
             feature_wnd: None,
+            road_rb: None,
+            river_rb: None,
+            railroad_rb: None,
         });
 
         // create the window using Self reference
@@ -80,6 +91,13 @@ impl MainWindow {
         lparam: LPARAM,
     ) -> LRESULT {
         match message {
+            WM_COMMAND => {
+                let ctrl_id =(wparam.0 & 0x0000_FFFF) as i32;
+                if ctrl_id >= IDC_BUTTON_ROAD && ctrl_id <= IDC_BUTTON_RAILROAD {
+                    self.set_feature(ctrl_id);
+                } 
+                LRESULT(0)
+            }
             WM_CREATE => {
                 let result = unsafe { GetModuleHandleW(None) };
                 match result {
@@ -88,21 +106,43 @@ impl MainWindow {
                         // TODO manage errors
                         self.feature_wnd = Some(feature_wnd.unwrap());
 
-                        let hwnd = unsafe { 
+                        let hwnd = unsafe {
                             CreateWindowExW(
-                            WINDOW_EX_STYLE::default(),
-                             &HSTRING::from("button"),
-                              &HSTRING::from("Feature Type"), 
-                        WS_CHILD | WS_VISIBLE | WINDOW_STYLE(BS_GROUPBOX as u32),
-                         10, 10, 125, 110, 
-                         self.handle, 
-                         HMENU(100),
-                          instance,
-                          std::ptr::null_mut())
-                            };
-                        MainWindow::create_selector(hwnd, instance, 20, "Road", 101);
-                        MainWindow::create_selector(hwnd, instance, 45, "River", 102);
-                        MainWindow::create_selector(hwnd, instance, 70, "Railroad", 103);
+                                WINDOW_EX_STYLE::default(),
+                                &HSTRING::from("button"),
+                                &HSTRING::from("Feature Type"),
+                                WS_CHILD | WS_VISIBLE | WINDOW_STYLE(BS_GROUPBOX as u32),
+                                8,
+                                10,
+                                125,
+                                110,
+                                self.handle,
+                                HMENU(100),
+                                instance,
+                                std::ptr::null_mut(),
+                            )
+                        };
+                        self.road_rb = Some(MainWindow::create_selector(
+                            self.handle,
+                            instance,
+                            30,
+                            "Road",
+                            101,
+                        ));
+                        self.river_rb = Some(MainWindow::create_selector(
+                            self.handle,
+                            instance,
+                            55,
+                            "River",
+                            102,
+                        ));
+                        self.railroad_rb = Some(MainWindow::create_selector(
+                            self.handle,
+                            instance,
+                            80,
+                            "Railroad",
+                            103,
+                        ));
 
                         LRESULT(0)
                     }
@@ -136,15 +176,42 @@ impl MainWindow {
         }
     }
 
-    fn create_selector(parent: HWND, instance: HINSTANCE, y_off: i32, label: &str, id: isize) -> HWND{
+    fn set_feature(&mut self, control_id: i32) {
+        match control_id {
+            IDC_BUTTON_ROAD => unsafe {
+                SendMessageW(self.road_rb, BM_SETCHECK, WPARAM(1), LPARAM(0));
+                SendMessageW(self.river_rb, BM_SETCHECK, WPARAM(0), LPARAM(0));
+                SendMessageW(self.railroad_rb, BM_SETCHECK, WPARAM(0), LPARAM(0));
+            },
+            IDC_BUTTON_RIVER => unsafe {
+                SendMessageW(self.road_rb, BM_SETCHECK, WPARAM(0), LPARAM(0));
+                SendMessageW(self.river_rb, BM_SETCHECK, WPARAM(1), LPARAM(0));
+                SendMessageW(self.railroad_rb, BM_SETCHECK, WPARAM(0), LPARAM(0));
+            },
+            IDC_BUTTON_RAILROAD => unsafe {
+                SendMessageW(self.road_rb, BM_SETCHECK, WPARAM(0), LPARAM(0));
+                SendMessageW(self.river_rb, BM_SETCHECK, WPARAM(0), LPARAM(0));
+                SendMessageW(self.railroad_rb, BM_SETCHECK, WPARAM(1), LPARAM(0));
+            },
+            _ => (),
+        }
+    }
+
+    fn create_selector(
+        parent: HWND,
+        instance: HINSTANCE,
+        y_off: i32,
+        label: &str,
+        id: isize,
+    ) -> HWND {
         unsafe {
             CreateWindowExW(
                 WINDOW_EX_STYLE::default(),
                 &HSTRING::from("button"),
                 &HSTRING::from(label),
                 WS_CHILD | WS_VISIBLE | WINDOW_STYLE(BS_RADIOBUTTON as u32),
-                10,
-                y_off, 
+                16,
+                y_off,
                 110,
                 20,
                 parent,
@@ -153,7 +220,6 @@ impl MainWindow {
                 std::ptr::null_mut(),
             )
         }
-
     }
 
     unsafe extern "system" fn wnd_proc(
