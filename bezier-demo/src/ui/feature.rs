@@ -1,4 +1,5 @@
 use geometry::{bezier::Bezier, Point};
+use crate::feature::{road::{Road, CenterLine}, Feature};
 
 use std::sync::Once;
 use windows::{
@@ -47,14 +48,22 @@ static REGISTER_FEATURE_WINDOW_CLASS: Once = Once::new();
 static FEATURE_WINDOW_CLASS_NAME: &HSTRING = w!("bytetrail.window.bezier-demo");
 
 #[derive(Debug, Clone)]
-pub struct RenderState {
-    pub bezier: Bezier,
+pub(crate) struct RenderState {
+    pub(crate) bezier: Bezier,
+    pub(crate) road: Road,
     pub hover: Option<usize>,
     pub selected: Option<usize>,
 }
 
 impl RenderState {
     pub(crate) fn new() -> Self {
+        // begin replacing Beziér with feature
+        let mut road = Road::new_with_attributes(50.0, Some(CenterLine::Solid), false);
+        road.set_ctrl_point(0, Point{x: 10.0, y: 10.0});
+        road.set_ctrl_point(1, Point{x: 100.0, y: 10.0});
+        road.set_ctrl_point(2, Point{x: 100.0, y: 110.0});
+        road.set_ctrl_point(3, Point{x: 200.0, y: 110.0});
+
         RenderState {
             bezier: Bezier::new_with_ctrl_point(
                 [
@@ -65,6 +74,7 @@ impl RenderState {
                 ],
                 0.025,
             ),
+            road,
             hover: None,
             selected: None,
         }
@@ -202,7 +212,8 @@ impl FeatureWindow {
 
     fn draw(&mut self) -> Result<()> {
         let target = self.target.as_ref().unwrap();
-        let curve = self.render_state.bezier.curve();
+        // let curve = self.render_state.bezier.curve();
+        let curve = self.render_state.road.centerline[0].curve();
         unsafe {
             target.Clear(Some(&D2D1_COLOR_F {
                 r: 0.9,

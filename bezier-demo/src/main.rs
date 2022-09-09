@@ -1,4 +1,5 @@
 mod ui;
+mod feature;
 
 use windows::Win32::{
     Foundation::HWND,

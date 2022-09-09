@@ -1,5 +1,7 @@
 use geometry::{bezier::Bezier, Point};
 
+use super::Feature;
+
 const DEFAULT_RESOLUTION: f32 = 0.025;
 const DERIVED_CTRL_POINT: usize = 3;
 const DERIVED_CTRL_POINT_MOD: f32 = 3.0;
@@ -19,6 +21,7 @@ pub(crate) struct Road {
     pub centerline: Vec<Bezier>,
     edge_curve: Vec<[Vec<Point>; 2]>,
     edgeline_curve: Option<[Vec<Vec<Point>>; 2]>,
+    ctrl_points: usize,
     width: f32,
     centerline_type: Option<CenterLine>,
     edgeline_visible: bool,
@@ -30,6 +33,7 @@ impl Road {
             resolution: DEFAULT_RESOLUTION,
             centerline: Vec::<Bezier>::new(),
             edge_curve: Vec::<[Vec<Point>; 2]>::new(),
+            ctrl_points: 4,
             edgeline_curve: None,
             width: DEFAULT_ROAD_WIDTH,
             centerline_type: None,
@@ -46,6 +50,7 @@ impl Road {
             resolution: DEFAULT_RESOLUTION,
             centerline: Vec::<Bezier>::new(),
             edge_curve: Vec::<[Vec<Point>; 2]>::new(),
+            ctrl_points: 4,
             edgeline_curve: None,
             width,
             centerline_type,
@@ -150,5 +155,54 @@ impl Road {
         let p0 = self.centerline.last().unwrap().ctrl_point(3);
 
         let b = Bezier::new_with_ctrl_point([p0, p0.reflect(p1), p2, p3], self.resolution);
+        self.ctrl_points += 4;
+        self.centerline.push(b);
+    }
+}
+
+impl Feature for Road {
+    fn ctrl_points(&self) -> usize {
+        todo!()
+    }
+
+    fn ctrl_point(&self, idx: usize) -> geometry::Point {
+        todo!()
+    }
+
+    /// Sets a cotnrol point in the compound Beziér curve that defines the feature.
+    /// The reflected control point is set when the control point is reflected
+    /// around a segment joining control point.
+    fn set_ctrl_point(&mut self, idx: usize, point: geometry::Point) {
+        let curve = &mut self.centerline;
+        let segment = idx / 4;
+        let ctrl_point = idx % 4;
+        // if this is an interior control point then adjust 2 point
+        if (2..self.ctrl_points-3).contains(&idx) {
+            if ctrl_point == 0 || ctrl_point == 3 {
+                // overlapped control point
+                let affect: i32 = match ctrl_point {
+                    0 => - 1,
+                    _ => 1,
+                };
+                let affected_segment = segment as i32 + affect;
+                let affected_point = (idx as i32 + affect) % 4;
+                curve[segment].set_ctrl_point(point, ctrl_point);
+                curve[affected_segment as usize].set_ctrl_point(point, affected_point as usize);
+            } else {
+                // reflected control point
+                let (reflect, affect) = match ctrl_point {
+                    1 => (-1, -3),
+                    _ => (1, 3),
+                };
+                // reflect around this point
+                let reflect_segment_idx = segment as i32 + affect;
+                let relected_idx = (idx as i32 + affect) % 4;
+                let around = (idx as i32 + reflect) % 4;
+                let reflected_point = curve[segment].ctrl_point(ctrl_point as usize).reflect(
+                    curve[reflect_segment_idx as usize].ctrl_point(around as usize));
+                curve[segment].set_ctrl_point(point, ctrl_point);
+                curve[reflect_segment_idx as usize].set_ctrl_point(reflected_point, relected_idx as usize);
+            }
+        }
     }
 }
