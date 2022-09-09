@@ -1,5 +1,5 @@
-use geometry::{bezier::Bezier, Point};
-use crate::feature::{road::{Road, CenterLine}, Feature};
+use geometry::{Point};
+use crate::feature::{road::{BezierFeature, CenterLine}};
 
 use std::sync::Once;
 use windows::{
@@ -49,8 +49,8 @@ static FEATURE_WINDOW_CLASS_NAME: &HSTRING = w!("bytetrail.window.bezier-demo");
 
 #[derive(Debug, Clone)]
 pub(crate) struct RenderState {
-    pub(crate) bezier: Bezier,
-    pub(crate) road: Road,
+//    pub(crate) bezier: Bezier,
+    pub(crate) road: BezierFeature,
     pub hover: Option<usize>,
     pub selected: Option<usize>,
 }
@@ -58,22 +58,13 @@ pub(crate) struct RenderState {
 impl RenderState {
     pub(crate) fn new() -> Self {
         // begin replacing Beziér with feature
-        let mut road = Road::new_with_attributes(50.0, Some(CenterLine::Solid), false);
+        let mut road = BezierFeature::new_with_attributes(50.0, Some(CenterLine::Solid), false);
         road.set_ctrl_point(0, Point{x: 10.0, y: 10.0});
         road.set_ctrl_point(1, Point{x: 100.0, y: 10.0});
-        road.set_ctrl_point(2, Point{x: 100.0, y: 110.0});
-        road.set_ctrl_point(3, Point{x: 200.0, y: 110.0});
+        road.set_ctrl_point(2, Point{x: 100.0, y: 200.0});
+        road.set_ctrl_point(3, Point{x: 200.0, y: 200.0});
 
         RenderState {
-            bezier: Bezier::new_with_ctrl_point(
-                [
-                    Point { x: 20.0, y: 20.0 },
-                    Point { x: 120.0, y: 20.0 },
-                    Point { x: 220.0, y: 220.0 },
-                    Point { x: 320.0, y: 20.0 },
-                ],
-                0.025,
-            ),
             road,
             hover: None,
             selected: None,
@@ -81,7 +72,7 @@ impl RenderState {
     }
 
     fn in_control_point(&self, x: f32, y: f32) -> Option<usize> {
-        for (idx, ctrl) in self.bezier.ctrl_points().iter().enumerate() {
+        for (idx, ctrl) in self.road.into_iter().enumerate() {
             if ctrl.dist_to_xy(x, y) <= RENDER_CTRL_HANDLE_RADIUS {
                 return Some(idx);
             }
@@ -239,7 +230,7 @@ impl FeatureWindow {
                 radiusY: RENDER_CTRL_HANDLE_RADIUS,
                 ..Default::default()
             };
-            for (idx, ctrl) in self.render_state.bezier.ctrl_points().iter().enumerate() {
+            for (idx, ctrl) in self.render_state.road.into_iter().enumerate() {
                 ellipse.point = D2D_POINT_2F {
                     x: ctrl.x,
                     y: ctrl.y,
@@ -257,22 +248,22 @@ impl FeatureWindow {
                 );
             }
             // draw the control point lines
-            let ctrl_points = self.render_state.bezier.ctrl_points();
-            let ctrl_brush = self.control_brush.as_ref().unwrap();
-            target.DrawLine(
-                ctrl_points[0].into(),
-                ctrl_points[1].into(),
-                ctrl_brush,
-                1.0,
-                &self.ctrl_style,
-            );
-            target.DrawLine(
-                ctrl_points[2].into(),
-                ctrl_points[3].into(),
-                ctrl_brush,
-                1.0,
-                &self.ctrl_style,
-            );
+            // let ctrl_points = self.render_state.road.ctrl_point_len();
+            // let ctrl_brush = self.control_brush.as_ref().unwrap();
+            // target.DrawLine(
+            //     ctrl_points[0].into(),
+            //     ctrl_points[1].into(),
+            //     ctrl_brush,
+            //     1.0,
+            //     &self.ctrl_style,
+            // );
+            // target.DrawLine(
+            //     ctrl_points[2].into(),
+            //     ctrl_points[3].into(),
+            //     ctrl_brush,
+            //     1.0,
+            //     &self.ctrl_style,
+            // );
         }
         Ok(())
     }
@@ -320,10 +311,10 @@ impl FeatureWindow {
                 let idx = self.render_state.in_control_point(x, y);
                 if wparam.0 == MK_LBUTTON as usize {
                     if let Some(selected) = self.render_state.selected {
-                        let current = self.render_state.bezier.ctrl_point(selected);
+                        let current = self.render_state.road.ctrl_point(selected);
                         self.render_state
-                            .bezier
-                            .set_ctrl_point(Point { x, y }, selected);
+                            .road
+                            .set_ctrl_point(selected, Point { x, y });
                         let top = (current.y.min(y) - RENDER_CTRL_HANDLE_RADIUS) as i32;
                         let bottom = (current.y.max(y) + RENDER_CTRL_HANDLE_RADIUS) as i32;
                         let left = (current.x.min(x) - RENDER_CTRL_HANDLE_RADIUS) as i32;
@@ -343,7 +334,7 @@ impl FeatureWindow {
                     }
                 }
                 if let Some(idx) = idx {
-                    let ctrl = &self.render_state.bezier.ctrl_points()[idx];
+                    let ctrl = &self.render_state.road.ctrl_point(idx);
                     if self.render_state.hover.is_none() {
                         self.render_state.hover = Some(idx);
                         unsafe {
@@ -362,7 +353,7 @@ impl FeatureWindow {
                 } else {
                     // last state was hover
                     if let Some(hover) = self.render_state.hover {
-                        let ctrl = &self.render_state.bezier.ctrl_points()[hover];
+                        let ctrl = &self.render_state.road.ctrl_point(hover);
                         // left the active control point boundary
                         self.render_state.hover = None;
                         unsafe {
