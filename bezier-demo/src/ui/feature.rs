@@ -247,23 +247,24 @@ impl FeatureWindow {
                     &self.line_style,
                 );
             }
-            // draw the control point lines
-            // let ctrl_points = self.render_state.road.ctrl_point_len();
-            // let ctrl_brush = self.control_brush.as_ref().unwrap();
-            // target.DrawLine(
-            //     ctrl_points[0].into(),
-            //     ctrl_points[1].into(),
-            //     ctrl_brush,
-            //     1.0,
-            //     &self.ctrl_style,
-            // );
-            // target.DrawLine(
-            //     ctrl_points[2].into(),
-            //     ctrl_points[3].into(),
-            //     ctrl_brush,
-            //     1.0,
-            //     &self.ctrl_style,
-            // );
+            let ctrl_brush = self.control_brush.as_ref().unwrap();
+            for segment in self.render_state.road.segments() {
+                let ctrl_points = segment.ctrl_points();
+                target.DrawLine(
+                    ctrl_points[0].into(),
+                    ctrl_points[1].into(),
+                    ctrl_brush,
+                    1.0,
+                    &self.ctrl_style,
+                );
+                target.DrawLine(
+                    ctrl_points[2].into(),
+                    ctrl_points[3].into(),
+                    ctrl_brush,
+                    1.0,
+                    &self.ctrl_style,
+                );
+            }
         }
         Ok(())
     }

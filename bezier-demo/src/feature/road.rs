@@ -77,6 +77,10 @@ impl BezierFeature {
         road
     }
 
+    pub(crate) fn segments(&self) -> &Vec<Bezier> {
+        &self.centerline
+    }
+
     pub(crate) fn resolution(&self) -> f32 {
         self.resolution
     }
@@ -190,7 +194,6 @@ impl BezierFeature {
     /// The reflected control point is set when the control point is reflected
     /// around a segment joining control point.
     pub(crate) fn set_ctrl_point(&mut self, idx: usize, point: geometry::Point) {
-        println!("Setting: {:?}", point);
         let curve = &mut self.centerline;
         let segment = idx / 4;
         let ctrl_point = idx % 4;
