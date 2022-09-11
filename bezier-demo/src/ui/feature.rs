@@ -312,7 +312,7 @@ impl FeatureWindow {
                 let idx = self.render_state.in_control_point(x, y);
                 if wparam.0 == MK_LBUTTON as usize {
                     if let Some(selected) = self.render_state.selected {
-                        let current = self.render_state.road.ctrl_point(selected);
+                        let current = self.render_state.road.ctrl_point(selected).unwrap();
                         self.render_state
                             .road
                             .set_ctrl_point(selected, Point { x, y });
@@ -335,7 +335,7 @@ impl FeatureWindow {
                     }
                 }
                 if let Some(idx) = idx {
-                    let ctrl = &self.render_state.road.ctrl_point(idx);
+                    let ctrl = &self.render_state.road.ctrl_point(idx).unwrap();
                     if self.render_state.hover.is_none() {
                         self.render_state.hover = Some(idx);
                         unsafe {
@@ -354,7 +354,7 @@ impl FeatureWindow {
                 } else {
                     // last state was hover
                     if let Some(hover) = self.render_state.hover {
-                        let ctrl = &self.render_state.road.ctrl_point(hover);
+                        let ctrl = &self.render_state.road.ctrl_point(hover).unwrap();
                         // left the active control point boundary
                         self.render_state.hover = None;
                         unsafe {

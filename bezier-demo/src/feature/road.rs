@@ -186,8 +186,13 @@ impl BezierFeature {
         todo!()
     }
 
-    pub(crate) fn ctrl_point(&self, idx: usize) -> geometry::Point {
-        todo!()
+    pub(crate) fn ctrl_point(&self, idx: usize) -> Option<geometry::Point> {
+        let segment = idx / 4;
+        let ctrl_idx = idx % 4;
+        if segment >= self.centerline.len() {
+            return None;
+        }
+        Some(self.centerline[segment].ctrl_point(ctrl_idx))
     }
 
     /// Sets a control point in the compound Beziér curve that defines the feature.
