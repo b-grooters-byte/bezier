@@ -1,5 +1,5 @@
-use geometry::{Point};
-use crate::feature::{road::{BezierFeature, CenterLine}};
+use crate::feature::road::{BezierFeature, CenterLine};
+use geometry::Point;
 
 use std::sync::Once;
 use windows::{
@@ -33,9 +33,8 @@ use windows::{
         },
         UI::WindowsAndMessaging::{
             CreateWindowExW, DefWindowProcW, LoadCursorW, PostQuitMessage, RegisterClassW,
-            COLOR_WINDOW, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, HMENU, IDC_ARROW,
-            MK_LBUTTON, WINDOW_EX_STYLE, WM_DESTROY, WM_MOUSEMOVE, WM_PAINT, WM_SIZE,
-            WNDCLASSW, WS_VISIBLE,
+            COLOR_WINDOW, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, HMENU, IDC_ARROW, MK_LBUTTON,
+            WINDOW_EX_STYLE, WM_DESTROY, WM_MOUSEMOVE, WM_PAINT, WM_SIZE, WNDCLASSW, WS_VISIBLE,
         },
     },
 };
@@ -49,7 +48,7 @@ static FEATURE_WINDOW_CLASS_NAME: &HSTRING = w!("bytetrail.window.bezier-demo");
 
 #[derive(Debug, Clone)]
 pub(crate) struct RenderState {
-//    pub(crate) bezier: Bezier,
+    //    pub(crate) bezier: Bezier,
     pub(crate) road: BezierFeature,
     pub hover: Option<usize>,
     pub selected: Option<usize>,
@@ -59,10 +58,12 @@ impl RenderState {
     pub(crate) fn new() -> Self {
         // begin replacing Beziér with feature
         let mut road = BezierFeature::new_with_attributes(50.0, Some(CenterLine::Solid), false);
-        road.set_ctrl_point(0, Point{x: 10.0, y: 10.0});
-        road.set_ctrl_point(1, Point{x: 100.0, y: 10.0});
-        road.set_ctrl_point(2, Point{x: 100.0, y: 200.0});
-        road.set_ctrl_point(3, Point{x: 200.0, y: 200.0});
+        road.set_ctrl_point(0, Point { x: 10.0, y: 10.0 });
+        road.set_ctrl_point(1, Point { x: 100.0, y: 10.0 });
+        road.set_ctrl_point(2, Point { x: 100.0, y: 200.0 });
+        road.set_ctrl_point(3, Point { x: 200.0, y: 200.0 });
+
+        road.add_segment(Point { x: 300.0, y: 300.0 }, Point { x: 300.0, y: 400.0 });
 
         RenderState {
             road,
@@ -203,8 +204,6 @@ impl FeatureWindow {
 
     fn draw(&mut self) -> Result<()> {
         let target = self.target.as_ref().unwrap();
-        // let curve = self.render_state.bezier.curve();
-        let curve = self.render_state.road.centerline[0].curve();
         unsafe {
             target.Clear(Some(&D2D1_COLOR_F {
                 r: 0.9,
@@ -212,34 +211,42 @@ impl FeatureWindow {
                 b: 0.9,
                 a: 0.5,
             }));
-            // draw the curve
+        }
+        // let curve = self.render_state.bezier.curve();
+        for segment in self.render_state.road.mut_segments() {
+            let curve = segment.curve();
             let mut p1 = &curve[0];
             for p2 in curve.iter().skip(1) {
-                target.DrawLine(
-                    D2D_POINT_2F { x: p1.x, y: p1.y },
-                    D2D_POINT_2F { x: p2.x, y: p2.y },
-                    self.control_brush.as_ref().unwrap(),
-                    1.0,
-                    &self.line_style,
-                );
+                unsafe {
+                    target.DrawLine(
+                        D2D_POINT_2F { x: p1.x, y: p1.y },
+                        D2D_POINT_2F { x: p2.x, y: p2.y },
+                        self.control_brush.as_ref().unwrap(),
+                        1.0,
+                        &self.line_style,
+                    );
+                }
                 p1 = p2;
             }
-            // draw the control handles
-            let mut ellipse = D2D1_ELLIPSE {
-                radiusX: RENDER_CTRL_HANDLE_RADIUS,
-                radiusY: RENDER_CTRL_HANDLE_RADIUS,
-                ..Default::default()
+        }
+        let mut ellipse = D2D1_ELLIPSE {
+            radiusX: RENDER_CTRL_HANDLE_RADIUS,
+            radiusY: RENDER_CTRL_HANDLE_RADIUS,
+            ..Default::default()
+        };
+        for (idx, ctrl) in self.render_state.road.into_iter().enumerate() {
+            ellipse.point = D2D_POINT_2F {
+                x: ctrl.x,
+                y: ctrl.y,
             };
-            for (idx, ctrl) in self.render_state.road.into_iter().enumerate() {
-                ellipse.point = D2D_POINT_2F {
-                    x: ctrl.x,
-                    y: ctrl.y,
-                };
-                if let Some(select_idx) = self.render_state.hover {
-                    if select_idx == idx {
+            if let Some(select_idx) = self.render_state.hover {
+                if select_idx == idx {
+                    unsafe {
                         target.FillEllipse(&ellipse, self.selected_brush.as_ref().unwrap());
                     }
                 }
+            }
+            unsafe {
                 target.DrawEllipse(
                     &ellipse,
                     self.control_brush.as_ref().unwrap(),
@@ -250,20 +257,22 @@ impl FeatureWindow {
             let ctrl_brush = self.control_brush.as_ref().unwrap();
             for segment in self.render_state.road.segments() {
                 let ctrl_points = segment.ctrl_points();
-                target.DrawLine(
-                    ctrl_points[0].into(),
-                    ctrl_points[1].into(),
-                    ctrl_brush,
-                    1.0,
-                    &self.ctrl_style,
-                );
-                target.DrawLine(
-                    ctrl_points[2].into(),
-                    ctrl_points[3].into(),
-                    ctrl_brush,
-                    1.0,
-                    &self.ctrl_style,
-                );
+                unsafe {
+                    target.DrawLine(
+                        ctrl_points[0].into(),
+                        ctrl_points[1].into(),
+                        ctrl_brush,
+                        1.0,
+                        &self.ctrl_style,
+                    );
+                    target.DrawLine(
+                        ctrl_points[2].into(),
+                        ctrl_points[3].into(),
+                        ctrl_brush,
+                        1.0,
+                        &self.ctrl_style,
+                    );
+                }
             }
         }
         Ok(())

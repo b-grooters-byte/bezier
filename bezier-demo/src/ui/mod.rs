@@ -12,16 +12,15 @@ use windows::{
         UI::WindowsAndMessaging::{
             CreateWindowExW, DefWindowProcW, GetWindowLongPtrA, LoadCursorW, MoveWindow,
             PostQuitMessage, RegisterClassW, SendMessageW, SetWindowLongPtrA, ShowWindow,
-            BM_SETCHECK, BS_GROUPBOX, BS_RADIOBUTTON, COLOR_WINDOW,
-            CREATESTRUCTA, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, GWLP_USERDATA, HMENU, IDC_ARROW,
-            SW_SHOW, WINDOW_EX_STYLE, WINDOW_STYLE, WM_COMMAND, WM_CREATE, WM_DESTROY, WM_SIZE,
-            WNDCLASSW, WS_CHILD, WS_OVERLAPPEDWINDOW, WS_VISIBLE,
+            BM_SETCHECK, BS_GROUPBOX, BS_RADIOBUTTON, COLOR_WINDOW, CREATESTRUCTA, CS_HREDRAW,
+            CS_VREDRAW, CW_USEDEFAULT, GWLP_USERDATA, HMENU, IDC_ARROW, SW_SHOW, WINDOW_EX_STYLE,
+            WINDOW_STYLE, WM_COMMAND, WM_CREATE, WM_DESTROY, WM_SIZE, WNDCLASSW, WS_CHILD,
+            WS_OVERLAPPEDWINDOW, WS_VISIBLE,
         },
     },
 };
 
 use self::feature::FeatureWindow;
-
 
 const IDC_BUTTON_ROAD: i32 = 101;
 const IDC_BUTTON_RIVER: i32 = 102;
@@ -94,10 +93,10 @@ impl MainWindow {
     ) -> LRESULT {
         match message {
             WM_COMMAND => {
-                let ctrl_id =(wparam.0 & 0x0000_FFFF) as i32;
+                let ctrl_id = (wparam.0 & 0x0000_FFFF) as i32;
                 if (IDC_BUTTON_ROAD..=IDC_BUTTON_RAILROAD).contains(&ctrl_id) {
                     self.set_feature(ctrl_id);
-                } 
+                }
                 LRESULT(0)
             }
             WM_CREATE => {
@@ -178,7 +177,7 @@ impl MainWindow {
         }
     }
 
-fn set_feature(&mut self, control_id: i32) {
+    fn set_feature(&mut self, control_id: i32) {
         match control_id {
             IDC_BUTTON_ROAD => unsafe {
                 SendMessageW(self.road_rb, BM_SETCHECK, WPARAM(1), LPARAM(0));
@@ -224,23 +223,23 @@ fn set_feature(&mut self, control_id: i32) {
         }
     }
 
-unsafe extern "system" fn wnd_proc(
-    window: HWND,
-    message: u32,
-    wparam: WPARAM,
-    lparam: LPARAM,
-) -> LRESULT {
-    if message == WM_CREATE {
-        let create_struct = lparam.0 as *const CREATESTRUCTA;
-        let this = (*create_struct).lpCreateParams as *mut Self;
-        (*this).handle = window;
-        SetWindowLongPtrA(window, GWLP_USERDATA, this as _);
-    }
-    let this = GetWindowLongPtrA(window, GWLP_USERDATA) as *mut Self;
+    unsafe extern "system" fn wnd_proc(
+        window: HWND,
+        message: u32,
+        wparam: WPARAM,
+        lparam: LPARAM,
+    ) -> LRESULT {
+        if message == WM_CREATE {
+            let create_struct = lparam.0 as *const CREATESTRUCTA;
+            let this = (*create_struct).lpCreateParams as *mut Self;
+            (*this).handle = window;
+            SetWindowLongPtrA(window, GWLP_USERDATA, this as _);
+        }
+        let this = GetWindowLongPtrA(window, GWLP_USERDATA) as *mut Self;
 
-    if !this.is_null() {
-        return (*this).message_loop(window, message, wparam, lparam);
+        if !this.is_null() {
+            return (*this).message_loop(window, message, wparam, lparam);
+        }
+        DefWindowProcW(window, message, wparam, lparam)
     }
-    DefWindowProcW(window, message, wparam, lparam)
-}
 }

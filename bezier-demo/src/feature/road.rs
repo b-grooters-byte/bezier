@@ -27,14 +27,15 @@ pub(crate) struct BezierFeature {
 
 impl BezierFeature {
     pub(crate) fn new() -> Self {
-
-        let b = Bezier::new_with_ctrl_point([
-            Point{x: 10.0, y: 10.0},
-            Point{x: 50.0, y: 10.0},
-            Point{x: 100.0, y: 10.0},
-            Point{x: 150.0, y: 100.0},
-            ], DEFAULT_RESOLUTION);
-
+        let b = Bezier::new_with_ctrl_point(
+            [
+                Point { x: 10.0, y: 10.0 },
+                Point { x: 50.0, y: 10.0 },
+                Point { x: 100.0, y: 10.0 },
+                Point { x: 150.0, y: 100.0 },
+            ],
+            DEFAULT_RESOLUTION,
+        );
 
         let mut road = BezierFeature {
             resolution: DEFAULT_RESOLUTION,
@@ -55,13 +56,15 @@ impl BezierFeature {
         centerline_type: Option<CenterLine>,
         edgeline_visible: bool,
     ) -> Self {
-
-        let b = Bezier::new_with_ctrl_point([
-            Point{x: 10.0, y: 10.0},
-            Point{x: 50.0, y: 10.0},
-            Point{x: 100.0, y: 10.0},
-            Point{x: 150.0, y: 100.0},
-            ], DEFAULT_RESOLUTION);
+        let b = Bezier::new_with_ctrl_point(
+            [
+                Point { x: 10.0, y: 10.0 },
+                Point { x: 50.0, y: 10.0 },
+                Point { x: 100.0, y: 10.0 },
+                Point { x: 150.0, y: 100.0 },
+            ],
+            DEFAULT_RESOLUTION,
+        );
 
         let mut road = BezierFeature {
             resolution: DEFAULT_RESOLUTION,
@@ -79,6 +82,10 @@ impl BezierFeature {
 
     pub(crate) fn segments(&self) -> &Vec<Bezier> {
         &self.centerline
+    }
+
+    pub(crate) fn mut_segments(&mut self) -> &mut Vec<Bezier> {
+        &mut self.centerline
     }
 
     pub(crate) fn resolution(&self) -> f32 {
@@ -181,7 +188,7 @@ impl BezierFeature {
         self.ctrl_points += 4;
         self.centerline.push(b);
     }
-   
+
     pub(crate) fn ctrl_point_len(&self) -> usize {
         todo!()
     }
@@ -203,11 +210,11 @@ impl BezierFeature {
         let segment = idx / 4;
         let ctrl_point = idx % 4;
         // if this is an interior control point then adjust 2 point
-        if curve.len() > 1 && (2..self.ctrl_points-3).contains(&idx) {
+        if curve.len() > 1 && (2..self.ctrl_points - 3).contains(&idx) {
             if ctrl_point == 0 || ctrl_point == 3 {
                 // overlapped control point
                 let affect: i32 = match ctrl_point {
-                    0 => - 1,
+                    0 => -1,
                     _ => 1,
                 };
                 let affected_segment = segment as i32 + affect;
@@ -223,16 +230,16 @@ impl BezierFeature {
                 let reflect_segment_idx = segment as i32 + affect;
                 let relected_idx = (idx as i32 + affect) % 4;
                 let around = (idx as i32 + reflect) % 4;
-                let reflected_point = curve[segment].ctrl_point(ctrl_point as usize).reflect(
-                    curve[reflect_segment_idx as usize].ctrl_point(around as usize));
-                curve[reflect_segment_idx as usize].set_ctrl_point(reflected_point, relected_idx as usize);
+                let reflected_point = curve[segment]
+                    .ctrl_point(ctrl_point as usize)
+                    .reflect(curve[reflect_segment_idx as usize].ctrl_point(around as usize));
+                curve[reflect_segment_idx as usize]
+                    .set_ctrl_point(reflected_point, relected_idx as usize);
             }
         }
         curve[segment].set_ctrl_point(point, ctrl_point);
     }
 }
-
-
 
 impl<'a> IntoIterator for &'a BezierFeature {
     type Item = &'a geometry::Point;
@@ -250,23 +257,22 @@ pub struct ControlPointIterator<'a> {
 
 impl<'a> ControlPointIterator<'a> {
     pub(crate) fn new(feature: &'a BezierFeature) -> Self {
-        let points: Vec<&geometry::Point> = 
-        feature.centerline.iter().flat_map(|b| b.ctrl_points()).collect();
+        let points: Vec<&geometry::Point> = feature
+            .centerline
+            .iter()
+            .flat_map(|b| b.ctrl_points())
+            .collect();
 
-        Self {
-            points,
-            index: 0,
-        }
+        Self { points, index: 0 }
     }
 }
-
 
 impl<'a> Iterator for ControlPointIterator<'a> {
     type Item = &'a Point;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index < self.points.len() {
-            let result =self.points[self.index];
+            let result = self.points[self.index];
             self.index += 1;
             return Some(result);
         }
