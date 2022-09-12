@@ -184,7 +184,7 @@ impl BezierFeature {
         let p1 = self.centerline.last().unwrap().ctrl_point(2);
         let p0 = self.centerline.last().unwrap().ctrl_point(3);
 
-        let b = Bezier::new_with_ctrl_point([p0, p0.reflect(p1), p2, p3], self.resolution);
+        let b = Bezier::new_with_ctrl_point([p0, p1.reflect(p0), p2, p3], self.resolution);
         self.ctrl_points += 4;
         self.centerline.push(b);
     }
@@ -230,10 +230,9 @@ impl BezierFeature {
                 let reflect_segment_idx = segment as i32 + reflect;
                 let relected_idx = (idx as i32 + affect) % 4;
                 let around = (idx as i32 + reflect) % 4;
-                println!("Reflected segment {}, Reflected ctrl pt {}, around ctrl pt {}", reflect_segment_idx, relected_idx, around);
                 let reflected_point = curve[segment]
-                    .ctrl_point(ctrl_point as usize)
-                    .reflect(curve[reflect_segment_idx as usize].ctrl_point(around as usize));
+                    .ctrl_point(ctrl_point)
+                    .reflect(curve[segment].ctrl_point(around as usize));
                 curve[reflect_segment_idx as usize]
                     .set_ctrl_point(reflected_point, relected_idx as usize);
             }

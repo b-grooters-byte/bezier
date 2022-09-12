@@ -50,8 +50,8 @@ impl Point {
     /// The reflection is both the X and Y axis so that a point {5.0,5.0}
     /// reflected around the orgin would result in a point of {-5.0, -5.0}
     pub fn reflect(&self, around: Point) -> Point {
-        let delta = around - *self;
-        *self - delta
+        let delta = *self - around;
+        around - delta
     }
 }
 
@@ -135,11 +135,21 @@ mod test {
     }
 
     #[test]
+    fn test_y_reflect() {
+        let p0 = Point { x: 20.0, y: 20.0 };
+        let p1 = Point { x: 60.0, y: 20.0 };
+
+        let p3 = p1.reflect(p0);
+        assert_eq!(-20.0, p3.x);
+        assert_eq!(20.0, p3.y);
+    }
+
+    #[test]
     fn test_reflect() {
         let p0 = Point { x: 0.0, y: 0.0 };
         let p1 = Point { x: -5.0, y: 5.0 };
 
-        let p3 = p0.reflect(p1);
+        let p3 = p1.reflect(p0);
 
         assert_eq!(5.0, p3.x);
         assert_eq!(-5.0, p3.y);
@@ -147,7 +157,7 @@ mod test {
         let p0 = Point { x: 5.0, y: 5.0 };
         let p1 = Point { x: 10.0, y: 10.0 };
 
-        let p3 = p0.reflect(p1);
+        let p3 = p1.reflect(p0);
 
         assert_eq!(0.0, p3.x);
         assert_eq!(0.0, p3.y);
