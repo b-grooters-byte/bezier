@@ -210,7 +210,7 @@ impl BezierFeature {
         let segment = idx / 4;
         let ctrl_point = idx % 4;
         // if this is an interior control point then adjust 2 point
-        if curve.len() > 1 && (2..self.ctrl_points - 3).contains(&idx) {
+        if curve.len() > 1 && (2..self.ctrl_points - 2).contains(&idx) {
             if ctrl_point == 0 || ctrl_point == 3 {
                 // overlapped control point
                 let affect: i32 = match ctrl_point {
@@ -227,9 +227,10 @@ impl BezierFeature {
                     _ => (1, 3),
                 };
                 // reflect around this point
-                let reflect_segment_idx = segment as i32 + affect;
+                let reflect_segment_idx = segment as i32 + reflect;
                 let relected_idx = (idx as i32 + affect) % 4;
                 let around = (idx as i32 + reflect) % 4;
+                println!("Reflected segment {}, Reflected ctrl pt {}, around ctrl pt {}", reflect_segment_idx, relected_idx, around);
                 let reflected_point = curve[segment]
                     .ctrl_point(ctrl_point as usize)
                     .reflect(curve[reflect_segment_idx as usize].ctrl_point(around as usize));
