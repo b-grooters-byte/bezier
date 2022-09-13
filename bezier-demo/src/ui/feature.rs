@@ -8,9 +8,9 @@ use windows::{
         Foundation::RECT,
         Graphics::{
             Direct2D::{
-                Common::{D2D1_COLOR_F, D2D_POINT_2F, D2D_SIZE_U},
+                Common::{D2D1_COLOR_F, D2D_POINT_2F, D2D_SIZE_U, D2D1_FIGURE_BEGIN_FILLED, D2D1_FIGURE_END_CLOSED, D2D1_FIGURE_END_OPEN, D2D1_FILL_MODE_WINDING},
                 ID2D1HwndRenderTarget, D2D1_ELLIPSE, D2D1_HWND_RENDER_TARGET_PROPERTIES,
-                D2D1_PRESENT_OPTIONS, D2D1_RENDER_TARGET_PROPERTIES,
+                D2D1_PRESENT_OPTIONS, D2D1_RENDER_TARGET_PROPERTIES, ID2D1PathGeometry1, ID2D1GeometrySink, ID2D1PathGeometry,
             },
             Gdi::InvalidateRect,
         },
@@ -87,6 +87,7 @@ pub(crate) struct FeatureWindow {
     factory: ID2D1Factory1,
     line_style: ID2D1StrokeStyle,
     ctrl_style: ID2D1StrokeStyle,
+    test_geom: Option<ID2D1PathGeometry>,
     target: Option<ID2D1HwndRenderTarget>,
     line_brush: Option<ID2D1SolidColorBrush>,
     selected_brush: Option<ID2D1SolidColorBrush>,
@@ -126,6 +127,7 @@ impl FeatureWindow {
             factory,
             line_style,
             ctrl_style,
+            test_geom: None,
             line_brush: None,
             selected_brush: None,
             control_brush: None,
@@ -194,6 +196,8 @@ impl FeatureWindow {
             self.control_brush = create_brush(target, 0.25, 0.25, 0.25, 1.0).ok();
             self.line_brush = create_brush(target, 0.0, 0.0, 0.0, 1.0).ok();
             self.selected_brush = create_brush(target, 0.75, 0.0, 0.0, 1.0).ok();
+
+            self.create_path_geom();
         }
         // draw
         unsafe { self.target.as_ref().unwrap().BeginDraw() };
@@ -212,6 +216,9 @@ impl FeatureWindow {
                 a: 0.5,
             }));
         }
+        // draw the surface
+        let test_geom = self.test_geom.as_ref().unwrap();
+        unsafe { target.FillGeometry(test_geom, self.control_brush.as_ref().unwrap(), None, ) };
         // let curve = self.render_state.bezier.curve();
         for segment in self.render_state.road.mut_segments() {
             let curve = segment.curve();
@@ -412,6 +419,23 @@ impl FeatureWindow {
         }
         DefWindowProcW(window, message, wparam, lparam)
     }
+
+    fn create_path_geom(&mut self) {
+        let surface_geom = unsafe { self.factory.CreatePathGeometry()}.unwrap();
+        let points = self.render_state.road.surface();
+        let sink = unsafe {surface_geom.Open().unwrap()};
+        unsafe {
+            sink.SetFillMode(D2D1_FILL_MODE_WINDING);
+            sink.BeginFigure((*points[0]).into(), D2D1_FIGURE_BEGIN_FILLED);
+            for (_, point) in points.iter().enumerate().skip(1) {
+                sink.AddLine((**point).into());
+            }
+            sink.EndFigure(D2D1_FIGURE_END_CLOSED);
+            sink.Close().expect("unable to create geometry");
+        }
+        self.test_geom = Some(surface_geom);
+    }
+
 }
 
 fn mouse_position(lparam: LPARAM) -> (f32, f32) {

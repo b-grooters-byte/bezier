@@ -37,10 +37,15 @@ impl BezierFeature {
             DEFAULT_RESOLUTION,
         );
 
+        let r0 = Vec::<Point>::new();
+        let r_pi = Vec::<Point>::new();
+        let mut edge_curve = Vec::<[Vec<Point>; 2]>::new();
+        edge_curve.push([r0, r_pi]);
+
         let mut road = BezierFeature {
             resolution: DEFAULT_RESOLUTION,
             centerline: Vec::<Bezier>::new(),
-            edge_curve: Vec::<[Vec<Point>; 2]>::new(),
+            edge_curve,
             ctrl_points: 4,
             edgeline_curve: None,
             width: DEFAULT_ROAD_WIDTH,
@@ -66,10 +71,15 @@ impl BezierFeature {
             DEFAULT_RESOLUTION,
         );
 
+        let r0 = Vec::<Point>::new();
+        let r_pi = Vec::<Point>::new();
+        let mut edge_curve = Vec::<[Vec<Point>; 2]>::new();
+        edge_curve.push([r0, r_pi]);
+
         let mut road = BezierFeature {
             resolution: DEFAULT_RESOLUTION,
             centerline: Vec::<Bezier>::new(),
-            edge_curve: Vec::<[Vec<Point>; 2]>::new(),
+            edge_curve,
             ctrl_points: 4,
             edgeline_curve: None,
             width,
@@ -118,8 +128,8 @@ impl BezierFeature {
             .collect::<Vec<&geometry::Point>>();
         let mut points_2pi: Vec<&geometry::Point> = self
             .edge_curve
-            .iter()
-            .flat_map(|v| v[1].iter())
+            .iter().rev()
+            .flat_map(|v| v[1].iter().rev())
             .collect::<Vec<&geometry::Point>>();
 
         let mut polygon = Vec::<&geometry::Point>::with_capacity(points_2pi.len() * 2);
@@ -158,22 +168,25 @@ impl BezierFeature {
 
     fn calc_edge_curve(&mut self, idx: usize) {
         let tangent_points = self.tangent_points(idx);
-        let edge_curve = &mut self.edge_curve[idx];
+        let mut edge_curve = &mut self.edge_curve[idx];
+        edge_curve[0].clear();
+        edge_curve[1].clear();
         let curve = self.centerline[idx].curve();
+        let width = self.width / 2.0;
         for (idx, point) in tangent_points.iter().enumerate() {
             let mut tan_x = point.x;
             let mut tan_y = point.y;
             let normal = (tan_x * tan_x + tan_y * tan_y).sqrt();
             tan_x /= normal;
             tan_y /= normal;
-            edge_curve[idx][0] = Point {
-                x: curve[idx].x + tan_y * self.width,
-                y: curve[idx].y - tan_x * self.width,
-            };
-            edge_curve[idx][1] = Point {
-                x: curve[idx].x - tan_y * self.width,
-                y: curve[idx].y + tan_x * self.width,
-            };
+            edge_curve[0].push(Point {
+                x: curve[idx].x + tan_y * width,
+                y: curve[idx].y - tan_x * width,
+            });
+            edge_curve[1].push(Point {
+                x: curve[idx].x - tan_y * width,
+                y: curve[idx].y + tan_x * width,
+            });
         }
     }
 
@@ -187,10 +200,11 @@ impl BezierFeature {
         let b = Bezier::new_with_ctrl_point([p0, p1.reflect(p0), p2, p3], self.resolution);
         self.ctrl_points += 4;
         self.centerline.push(b);
-    }
 
-    pub(crate) fn ctrl_point_len(&self) -> usize {
-        todo!()
+        let r0 = Vec::<Point>::new();
+        let r_pi = Vec::<Point>::new();
+        let mut edge_curve = Vec::<[Vec<Point>; 2]>::new();
+        edge_curve.push([r0, r_pi]);
     }
 
     pub(crate) fn ctrl_point(&self, idx: usize) -> Option<geometry::Point> {
