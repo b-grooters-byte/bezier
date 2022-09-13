@@ -4,7 +4,7 @@ const DEFAULT_RESOLUTION: f32 = 0.025;
 const DERIVED_CTRL_POINT: usize = 3;
 const DERIVED_CTRL_POINT_MOD: f32 = 3.0;
 
-pub const DEFAULT_ROAD_WIDTH: f32 = 6500.0;
+pub const DEFAULT_ROAD_WIDTH: f32 = 50.0;
 
 #[derive(Debug, Clone)]
 pub(crate) enum CenterLine {
@@ -109,11 +109,12 @@ impl BezierFeature {
         }
     }
 
+    pub(crate) fn curve(&mut self) -> Vec<Point>{
+        self.centerline.iter_mut().flat_map(|b| b.curve()).copied().collect()
+    }
     /// Gets the polygon path representing the surface of the road feature
     pub(crate) fn surface(&mut self) -> Vec<&geometry::Point> {
         let recalculate: Vec<bool> = self.centerline.iter().map(|b| b.is_modified()).collect();
-        //        let points: Vec<&geometry::Point> =
-        //            self.centerline.iter_mut().flat_map(|b| b.curve()).collect();
         for (idx, r) in recalculate.iter().enumerate() {
             if *r {
                 self.centerline[idx].curve();
@@ -168,7 +169,7 @@ impl BezierFeature {
 
     fn calc_edge_curve(&mut self, idx: usize) {
         let tangent_points = self.tangent_points(idx);
-        let mut edge_curve = &mut self.edge_curve[idx];
+        let edge_curve = &mut self.edge_curve[idx];
         edge_curve[0].clear();
         edge_curve[1].clear();
         let curve = self.centerline[idx].curve();
@@ -203,8 +204,7 @@ impl BezierFeature {
 
         let r0 = Vec::<Point>::new();
         let r_pi = Vec::<Point>::new();
-        let mut edge_curve = Vec::<[Vec<Point>; 2]>::new();
-        edge_curve.push([r0, r_pi]);
+        self.edge_curve.push([r0, r_pi]);
     }
 
     pub(crate) fn ctrl_point(&self, idx: usize) -> Option<geometry::Point> {

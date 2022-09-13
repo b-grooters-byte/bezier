@@ -8,9 +8,9 @@ use windows::{
         Foundation::RECT,
         Graphics::{
             Direct2D::{
-                Common::{D2D1_COLOR_F, D2D_POINT_2F, D2D_SIZE_U, D2D1_FIGURE_BEGIN_FILLED, D2D1_FIGURE_END_CLOSED, D2D1_FIGURE_END_OPEN, D2D1_FILL_MODE_WINDING},
+                Common::{D2D1_COLOR_F, D2D_POINT_2F, D2D_SIZE_U, D2D1_FIGURE_BEGIN_FILLED, D2D1_FIGURE_END_CLOSED, D2D1_FILL_MODE_WINDING},
                 ID2D1HwndRenderTarget, D2D1_ELLIPSE, D2D1_HWND_RENDER_TARGET_PROPERTIES,
-                D2D1_PRESENT_OPTIONS, D2D1_RENDER_TARGET_PROPERTIES, ID2D1PathGeometry1, ID2D1GeometrySink, ID2D1PathGeometry,
+                D2D1_PRESENT_OPTIONS, D2D1_RENDER_TARGET_PROPERTIES, ID2D1PathGeometry, 
             },
             Gdi::InvalidateRect,
         },
@@ -56,15 +56,12 @@ pub(crate) struct RenderState {
 
 impl RenderState {
     pub(crate) fn new() -> Self {
-        // begin replacing Beziér with feature
-        let mut road = BezierFeature::new_with_attributes(50.0, Some(CenterLine::Solid), false);
+        let mut road = BezierFeature::new_with_attributes(30.0, Some(CenterLine::Solid), false);
         road.set_ctrl_point(0, Point { x: 10.0, y: 10.0 });
         road.set_ctrl_point(1, Point { x: 100.0, y: 10.0 });
         road.set_ctrl_point(2, Point { x: 100.0, y: 200.0 });
         road.set_ctrl_point(3, Point { x: 200.0, y: 200.0 });
-
         road.add_segment(Point { x: 300.0, y: 300.0 }, Point { x: 300.0, y: 400.0 });
-
         RenderState {
             road,
             hover: None,
@@ -90,6 +87,7 @@ pub(crate) struct FeatureWindow {
     test_geom: Option<ID2D1PathGeometry>,
     target: Option<ID2D1HwndRenderTarget>,
     line_brush: Option<ID2D1SolidColorBrush>,
+    centerline_brush: Option<ID2D1SolidColorBrush>,
     selected_brush: Option<ID2D1SolidColorBrush>,
     control_brush: Option<ID2D1SolidColorBrush>,
     render_state: RenderState,
@@ -129,6 +127,7 @@ impl FeatureWindow {
             ctrl_style,
             test_geom: None,
             line_brush: None,
+            centerline_brush: None,
             selected_brush: None,
             control_brush: None,
             target: None,
@@ -181,6 +180,7 @@ impl FeatureWindow {
 
     fn release_device_resources(&mut self) {
         self.line_brush = None;
+        self.centerline_brush = None;
         self.control_brush = None;
         self.selected_brush = None;
     }
@@ -188,14 +188,13 @@ impl FeatureWindow {
     fn render(&mut self) -> Result<()> {
         // create the device specific resources
         if self.target == None {
-            //let device = create_device()?;
-            //let target = create_render_target(&self.factory, &device)?;
             self.create_render_target()?;
             let target = self.target.as_ref().unwrap();
             unsafe { target.SetDpi(self.dpi, self.dpi) };
             self.control_brush = create_brush(target, 0.25, 0.25, 0.25, 1.0).ok();
             self.line_brush = create_brush(target, 0.0, 0.0, 0.0, 1.0).ok();
             self.selected_brush = create_brush(target, 0.75, 0.0, 0.0, 1.0).ok();
+            self.centerline_brush = create_brush(target, 0.98, 0.665, 0.0, 1.0).ok();
 
             self.create_path_geom();
         }
@@ -207,35 +206,22 @@ impl FeatureWindow {
     }
 
     fn draw(&mut self) -> Result<()> {
+        let centerline  = self.render_state.road.curve();
         let target = self.target.as_ref().unwrap();
         unsafe {
             target.Clear(Some(&D2D1_COLOR_F {
-                r: 0.9,
-                g: 0.9,
-                b: 0.9,
-                a: 0.5,
+                r: 0.95,
+                g: 0.95,
+                b: 0.95,
+                a: 1.0,
             }));
         }
         // draw the surface
         let test_geom = self.test_geom.as_ref().unwrap();
         unsafe { target.FillGeometry(test_geom, self.control_brush.as_ref().unwrap(), None, ) };
-        // let curve = self.render_state.bezier.curve();
-        for segment in self.render_state.road.mut_segments() {
-            let curve = segment.curve();
-            let mut p1 = &curve[0];
-            for p2 in curve.iter().skip(1) {
-                unsafe {
-                    target.DrawLine(
-                        D2D_POINT_2F { x: p1.x, y: p1.y },
-                        D2D_POINT_2F { x: p2.x, y: p2.y },
-                        self.control_brush.as_ref().unwrap(),
-                        1.0,
-                        &self.line_style,
-                    );
-                }
-                p1 = p2;
-            }
-        }
+
+        self.draw_line(&centerline, self.centerline_brush.as_ref().unwrap(), 2.0);
+        self.draw_line(&centerline, self.control_brush.as_ref().unwrap(), 1.0);
         let mut ellipse = D2D1_ELLIPSE {
             radiusX: RENDER_CTRL_HANDLE_RADIUS,
             radiusY: RENDER_CTRL_HANDLE_RADIUS,
@@ -283,6 +269,23 @@ impl FeatureWindow {
             }
         }
         Ok(())
+    }
+
+    fn draw_line(&self, points: &Vec<Point>, brush: &ID2D1SolidColorBrush, width: f32) {
+        let target = self.target.as_ref().unwrap();
+        let mut p1 = &points[0];
+        for p2 in points.iter().skip(1) {
+            unsafe {
+                target.DrawLine(
+                    D2D_POINT_2F { x: p1.x, y: p1.y },
+                    D2D_POINT_2F { x: p2.x, y: p2.y },
+                    brush,
+                    width,
+                    &self.line_style,
+                );
+            }
+            p1 = p2;
+        }
     }
 
     fn message_handler(&mut self, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {

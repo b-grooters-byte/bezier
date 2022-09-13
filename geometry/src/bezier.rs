@@ -28,15 +28,13 @@ impl Bezier {
     /// resolution - a value representing the resolution of the curve.
     /// 0.0 < value <= 1.0. A smaller value is a higher resolution
     pub fn new_with_ctrl_point(ctrl_point: [Point; 4], resolution: f32) -> Self {
-        let mut bezier = Bezier {
+        let bezier = Bezier {
             ctrl_point,
             resolution,
             length: 0.0,
             modified: true,
             curve: None,
         };
-        // calculate the curve based on the control points
-        bezier.calc_curve();
         bezier
     }
 
