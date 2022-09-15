@@ -1,4 +1,4 @@
-use crate::feature::road::{BezierFeature, CenterLine};
+use crate::feature::{BezierFeature};
 use geometry::Point;
 
 use std::sync::Once;
@@ -56,7 +56,7 @@ pub(crate) struct RenderState {
 
 impl RenderState {
     pub(crate) fn new() -> Self {
-        let mut road = BezierFeature::new_with_attributes(30.0, Some(CenterLine::Solid), false);
+        let mut road = BezierFeature::new_with_attributes(30.0, false);
         road.set_ctrl_point(0, Point { x: 10.0, y: 10.0 });
         road.set_ctrl_point(1, Point { x: 100.0, y: 10.0 });
         road.set_ctrl_point(2, Point { x: 100.0, y: 200.0 });
@@ -206,6 +206,9 @@ impl FeatureWindow {
     }
 
     fn draw(&mut self) -> Result<()> {
+        if self.render_state.road.modified() {
+            self.create_path_geom();
+        }
         let centerline  = self.render_state.road.curve();
         let target = self.target.as_ref().unwrap();
         unsafe {

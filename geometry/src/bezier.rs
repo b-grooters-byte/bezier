@@ -91,7 +91,7 @@ impl Bezier {
         }
     }
 
-    pub fn is_modified(&self) -> bool {
+    pub fn modified(&self) -> bool {
         self.modified
     }
 
