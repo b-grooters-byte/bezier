@@ -1,4 +1,4 @@
-use crate::feature::{BezierFeature};
+use crate::feature::{BezierFeature, BezierFeatureType, road::Road};
 use geometry::Point;
 
 use std::sync::Once;
@@ -52,6 +52,7 @@ pub(crate) struct RenderState {
     pub(crate) road: BezierFeature,
     pub hover: Option<usize>,
     pub selected: Option<usize>,
+    pub feature: BezierFeatureType,
 }
 
 impl RenderState {
@@ -66,6 +67,7 @@ impl RenderState {
             road,
             hover: None,
             selected: None,
+            feature: BezierFeatureType::Road,
         }
     }
 
@@ -90,6 +92,7 @@ pub(crate) struct FeatureWindow {
     centerline_brush: Option<ID2D1SolidColorBrush>,
     selected_brush: Option<ID2D1SolidColorBrush>,
     control_brush: Option<ID2D1SolidColorBrush>,
+    water_brush: Option<ID2D1SolidColorBrush>,
     render_state: RenderState,
     dpi: f32,
 }
@@ -130,6 +133,7 @@ impl FeatureWindow {
             centerline_brush: None,
             selected_brush: None,
             control_brush: None,
+            water_brush: None,
             target: None,
             dpi: dpix,
         });
@@ -155,6 +159,11 @@ impl FeatureWindow {
         Ok(window_internal)
     }
 
+    pub(crate) fn set_feature_type(&mut self, feature_type: BezierFeatureType) {
+        self.render_state.feature = feature_type;
+        unsafe { InvalidateRect(self.handle, None, false); }
+    }
+    
     pub(crate) fn create_render_target(&mut self) -> Result<()> {
         unsafe {
             let mut rect: RECT = RECT::default();
@@ -183,6 +192,7 @@ impl FeatureWindow {
         self.centerline_brush = None;
         self.control_brush = None;
         self.selected_brush = None;
+        self.water_brush = None;
     }
 
     fn render(&mut self) -> Result<()> {
@@ -195,7 +205,7 @@ impl FeatureWindow {
             self.line_brush = create_brush(target, 0.0, 0.0, 0.0, 1.0).ok();
             self.selected_brush = create_brush(target, 0.75, 0.0, 0.0, 1.0).ok();
             self.centerline_brush = create_brush(target, 0.98, 0.665, 0.0, 1.0).ok();
-
+            self.water_brush = create_brush(target, 0.0, 0.65, 0.93, 1.0).ok();
             self.create_path_geom();
         }
         // draw
@@ -221,7 +231,12 @@ impl FeatureWindow {
         }
         // draw the surface
         let test_geom = self.test_geom.as_ref().unwrap();
-        unsafe { target.FillGeometry(test_geom, self.control_brush.as_ref().unwrap(), None, ) };
+        let surface_brush = match self.render_state.feature {
+            BezierFeatureType::Road => self.control_brush.as_ref().unwrap(),
+            BezierFeatureType::River => self.water_brush.as_ref().unwrap(),
+            BezierFeatureType::Railroad => self.control_brush.as_ref().unwrap(),
+        };
+        unsafe { target.FillGeometry(test_geom, surface_brush, None, ) };
 
         self.draw_line(&centerline, self.centerline_brush.as_ref().unwrap(), 2.0);
         self.draw_line(&centerline, self.control_brush.as_ref().unwrap(), 1.0);

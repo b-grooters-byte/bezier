@@ -9,14 +9,19 @@ const DERIVED_CTRL_POINT_MOD: f32 = 3.0;
 const DEFAULT_WIDTH: f32 = 30.0;
 
 #[derive(Debug, Clone)]
+pub(crate) enum BezierFeatureType {
+    Road,
+    River, 
+    Railroad,
+}
+
+#[derive(Debug, Clone)]
 pub(crate) struct BezierFeature {
     resolution: f32,
     pub centerline: Vec<Bezier>,
     edge_curve: Vec<[Vec<Point>; 2]>,
-    edgeline_curve: Option<[Vec<Vec<Point>>; 2]>,
     ctrl_points: usize,
     width: f32,
-    edgeline_visible: bool,
 }
 
 impl BezierFeature {
@@ -41,9 +46,7 @@ impl BezierFeature {
             centerline: Vec::<Bezier>::new(),
             edge_curve,
             ctrl_points: 4,
-            edgeline_curve: None,
             width: DEFAULT_WIDTH,
-            edgeline_visible: false,
         };
         road.centerline.push(b);
         road
@@ -73,9 +76,7 @@ impl BezierFeature {
             centerline: Vec::<Bezier>::new(),
             edge_curve,
             ctrl_points: 4,
-            edgeline_curve: None,
             width,
-            edgeline_visible,
         };
         road.centerline.push(b);
         road
@@ -114,6 +115,7 @@ impl BezierFeature {
         }
         self.centerline.iter_mut().flat_map(|b| b.curve()).copied().collect()
     }
+
     /// Gets the polygon path representing the surface of the road feature
     pub(crate) fn surface(&mut self) -> Vec<&geometry::Point> {
         let recalculate: Vec<bool> = self.centerline.iter().map(|b| b.modified()).collect();
@@ -190,6 +192,7 @@ impl BezierFeature {
                 y: curve[idx].y + tan_x * width,
             });
         }
+
     }
 
     /// Adds a new Bézier segment to an existing feature. Control points 0 and

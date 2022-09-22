@@ -1,4 +1,4 @@
-mod direct2d;
+pub mod direct2d;
 mod feature;
 
 use std::sync::Once;
@@ -19,6 +19,8 @@ use windows::{
         },
     },
 };
+
+use crate::feature::BezierFeatureType;
 
 use self::feature::FeatureWindow;
 
@@ -178,21 +180,28 @@ impl MainWindow {
     }
 
     fn set_feature(&mut self, control_id: i32) {
+        let feature_wnd = self.feature_wnd.as_mut().unwrap().as_mut();
         match control_id {
             IDC_BUTTON_ROAD => unsafe {
                 SendMessageW(self.road_rb, BM_SETCHECK, WPARAM(1), LPARAM(0));
                 SendMessageW(self.river_rb, BM_SETCHECK, WPARAM(0), LPARAM(0));
                 SendMessageW(self.railroad_rb, BM_SETCHECK, WPARAM(0), LPARAM(0));
+
+                feature_wnd.set_feature_type(BezierFeatureType::Road);
             },
             IDC_BUTTON_RIVER => unsafe {
                 SendMessageW(self.road_rb, BM_SETCHECK, WPARAM(0), LPARAM(0));
                 SendMessageW(self.river_rb, BM_SETCHECK, WPARAM(1), LPARAM(0));
                 SendMessageW(self.railroad_rb, BM_SETCHECK, WPARAM(0), LPARAM(0));
+
+                feature_wnd.set_feature_type(BezierFeatureType::River);
             },
             IDC_BUTTON_RAILROAD => unsafe {
                 SendMessageW(self.road_rb, BM_SETCHECK, WPARAM(0), LPARAM(0));
                 SendMessageW(self.river_rb, BM_SETCHECK, WPARAM(0), LPARAM(0));
                 SendMessageW(self.railroad_rb, BM_SETCHECK, WPARAM(1), LPARAM(0));
+
+                feature_wnd.set_feature_type(BezierFeatureType::Railroad);
             },
             _ => (),
         }
