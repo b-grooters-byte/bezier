@@ -41,6 +41,8 @@ use windows::{
 
 use crate::ui::direct2d::{create_brush, create_factory, create_style};
 
+use super::direct2d;
+
 const RENDER_CTRL_HANDLE_RADIUS: f32 = 5.0;
 
 static REGISTER_FEATURE_WINDOW_CLASS: Once = Once::new();
@@ -53,6 +55,7 @@ pub(crate) struct RenderState {
     pub hover: Option<usize>,
     pub selected: Option<usize>,
     pub feature: BezierFeatureType,
+    pub real_road: Option<Road>,
 }
 
 impl RenderState {
@@ -68,6 +71,7 @@ impl RenderState {
             hover: None,
             selected: None,
             feature: BezierFeatureType::Road,
+            real_road: None,
         }
     }
 
@@ -182,6 +186,7 @@ impl FeatureWindow {
         }
         Ok(())
     }
+
     fn release_device(&mut self) {
         self.target = None;
         self.release_device_resources();
@@ -238,8 +243,8 @@ impl FeatureWindow {
         };
         unsafe { target.FillGeometry(test_geom, surface_brush, None, ) };
 
-        self.draw_line(&centerline, self.centerline_brush.as_ref().unwrap(), 2.0);
-        self.draw_line(&centerline, self.control_brush.as_ref().unwrap(), 1.0);
+        direct2d::draw_line(target, &centerline, self.centerline_brush.as_ref().unwrap(), &self.line_style, 2.0);
+        direct2d::draw_line(target, &centerline, self.control_brush.as_ref().unwrap(), &self.line_style, 1.0);
         let mut ellipse = D2D1_ELLIPSE {
             radiusX: RENDER_CTRL_HANDLE_RADIUS,
             radiusY: RENDER_CTRL_HANDLE_RADIUS,
@@ -289,22 +294,7 @@ impl FeatureWindow {
         Ok(())
     }
 
-    fn draw_line(&self, points: &Vec<Point>, brush: &ID2D1SolidColorBrush, width: f32) {
-        let target = self.target.as_ref().unwrap();
-        let mut p1 = &points[0];
-        for p2 in points.iter().skip(1) {
-            unsafe {
-                target.DrawLine(
-                    D2D_POINT_2F { x: p1.x, y: p1.y },
-                    D2D_POINT_2F { x: p2.x, y: p2.y },
-                    brush,
-                    width,
-                    &self.line_style,
-                );
-            }
-            p1 = p2;
-        }
-    }
+
 
     fn message_handler(&mut self, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
         match message {

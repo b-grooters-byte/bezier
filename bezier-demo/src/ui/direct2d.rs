@@ -1,3 +1,4 @@
+use geometry::Point;
 use windows::{
     core::*, Foundation::Numerics::Matrix3x2, Win32::Graphics::Direct2D::Common::*,
     Win32::Graphics::Direct2D::*,
@@ -43,4 +44,21 @@ pub(crate) fn create_brush(
         transform: Matrix3x2::identity(),
     };
     unsafe { target.CreateSolidColorBrush(&color, Some(&properties)) }
+}
+
+
+pub(crate) fn draw_line(target: &ID2D1HwndRenderTarget, points: &Vec<Point>, brush: &ID2D1SolidColorBrush, style: &ID2D1StrokeStyle, width: f32) {
+    let mut p1 = &points[0];
+    for p2 in points.iter().skip(1) {
+        unsafe {
+            target.DrawLine(
+                D2D_POINT_2F { x: p1.x, y: p1.y },
+                D2D_POINT_2F { x: p2.x, y: p2.y },
+                brush,
+                width,
+                style,
+            );
+        }
+        p1 = p2;
+    }
 }
