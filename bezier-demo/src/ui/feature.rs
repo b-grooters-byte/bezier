@@ -49,16 +49,16 @@ static REGISTER_FEATURE_WINDOW_CLASS: Once = Once::new();
 static FEATURE_WINDOW_CLASS_NAME: &HSTRING = w!("bytetrail.window.bezier-demo");
 
 #[derive(Debug, Clone)]
-pub(crate) struct RenderState {
+pub(crate) struct RenderState<'a> {
     //    pub(crate) bezier: Bezier,
     pub(crate) road: BezierFeature,
     pub hover: Option<usize>,
     pub selected: Option<usize>,
     pub feature: BezierFeatureType,
-    pub real_road: Option<Road>,
+    pub real_road: Option<Road<'a>>,
 }
 
-impl RenderState {
+impl<'a> RenderState<'a> {
     pub(crate) fn new() -> Self {
         let mut road = BezierFeature::new_with_attributes(30.0, false);
         road.set_ctrl_point(0, Point { x: 10.0, y: 10.0 });
@@ -85,9 +85,9 @@ impl RenderState {
     }
 }
 
-pub(crate) struct FeatureWindow {
+pub(crate) struct FeatureWindow<'a> {
     pub(crate) handle: HWND,
-    factory: ID2D1Factory1,
+    factory: &'a ID2D1Factory1,
     line_style: ID2D1StrokeStyle,
     ctrl_style: ID2D1StrokeStyle,
     test_geom: Option<ID2D1PathGeometry>,
@@ -97,13 +97,12 @@ pub(crate) struct FeatureWindow {
     selected_brush: Option<ID2D1SolidColorBrush>,
     control_brush: Option<ID2D1SolidColorBrush>,
     water_brush: Option<ID2D1SolidColorBrush>,
-    render_state: RenderState,
+    render_state: RenderState<'a>,
     dpi: f32,
 }
 
-impl FeatureWindow {
-    pub(crate) fn new(parent: HWND) -> Result<Box<Self>> {
-        let factory = create_factory()?;
+impl<'a> FeatureWindow<'a> {
+    pub(crate) fn new(parent: HWND, factory: &'a ID2D1Factory1) -> Result<Box<Self>> {
         let line_style = create_style(&factory, None)?;
         let ctrl_style = create_style(&factory, Some(&[4.0, 2.0, 4.0, 2.0]))?;
         let instance = unsafe { GetModuleHandleW(None)? };
@@ -126,9 +125,12 @@ impl FeatureWindow {
         let mut dpiy = 0.0;
         unsafe { factory.GetDesktopDpi(&mut dpix, &mut dpiy) };
 
+        let road = Some(Road::new(&factory));
+        let mut render_state = RenderState::new();
+        render_state.real_road = road;
         let mut window_internal = Box::new(Self {
             handle: HWND(0),
-            render_state: RenderState::new(),
+            render_state,
             factory,
             line_style,
             ctrl_style,

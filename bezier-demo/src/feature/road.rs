@@ -19,21 +19,21 @@ pub(crate) enum CenterLine {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Road {
+pub(crate) struct Road<'a> {
     feature: BezierFeature,
     surface_brush: Option<ID2D1SolidColorBrush>,
     centerline_brush: Option<ID2D1SolidColorBrush>,
     centerline: Option<[Vec<Vec<Point>>; 2]>,
     edgeline: Option<[Vec<Vec<Point>>; 2]>,
     surface: Option<ID2D1PathGeometry>,
-    factory: ID2D1Factory1,
+    factory: &'a ID2D1Factory1,
     line_style: ID2D1StrokeStyle,
 }
 
-impl Road {
+impl<'a> Road<'a> {
 
-    pub(crate) fn new(factory: ID2D1Factory1) -> Self {
-        let line_style = direct2d::create_style(&factory, None).expect("unable to create stroke style");
+    pub(crate) fn new(factory: &'a ID2D1Factory1) -> Self {
+        let line_style = direct2d::create_style(factory, None).expect("unable to create stroke style");
         Road { 
             feature: BezierFeature::new(),
             surface_brush: None,

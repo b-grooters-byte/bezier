@@ -7,7 +7,7 @@ use windows::{
     w,
     Win32::{
         Foundation::{GetLastError, HINSTANCE, HWND, LPARAM, LRESULT, WPARAM},
-        Graphics::Gdi::HBRUSH,
+        Graphics::{Gdi::HBRUSH, Direct2D::ID2D1Factory1},
         System::LibraryLoader::GetModuleHandleW,
         UI::WindowsAndMessaging::{
             CreateWindowExW, DefWindowProcW, GetWindowLongPtrA, LoadCursorW, MoveWindow,
@@ -31,16 +31,17 @@ const IDC_BUTTON_RAILROAD: i32 = 103;
 static REGISTER_WINDOW_CLASS: Once = Once::new();
 static WINDOW_CLASS_NAME: &HSTRING = w!("bytetrail.window.bezier_demo_main");
 
-pub(crate) struct MainWindow {
+pub(crate) struct MainWindow<'a> {
     handle: HWND,
-    feature_wnd: Option<Box<FeatureWindow>>,
+    feature_wnd: Option<Box<FeatureWindow<'a>>>,
     road_rb: Option<HWND>,
     river_rb: Option<HWND>,
     railroad_rb: Option<HWND>,
+    factory: &'a ID2D1Factory1,
 }
 
-impl MainWindow {
-    pub(crate) fn new(title: &'static str) -> windows::core::Result<Box<Self>> {
+impl<'a> MainWindow<'a> {
+    pub(crate) fn new(title: &'static str, factory: &'a ID2D1Factory1) -> windows::core::Result<Box<Self>> {
         let instance = unsafe { GetModuleHandleW(None)? };
         // synchronization for a one time initialization of FFI call
         REGISTER_WINDOW_CLASS.call_once(|| {
@@ -63,6 +64,7 @@ impl MainWindow {
             road_rb: None,
             river_rb: None,
             railroad_rb: None,
+            factory,
         });
 
         // create the window using Self reference
@@ -105,7 +107,7 @@ impl MainWindow {
                 let result = unsafe { GetModuleHandleW(None) };
                 match result {
                     Ok(instance) => {
-                        let feature_wnd = FeatureWindow::new(self.handle);
+                        let feature_wnd = FeatureWindow::new(self.handle, self.factory);
                         // TODO manage errors
                         self.feature_wnd = Some(feature_wnd.unwrap());
 
