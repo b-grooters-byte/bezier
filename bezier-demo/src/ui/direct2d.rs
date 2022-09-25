@@ -46,8 +46,13 @@ pub(crate) fn create_brush(
     unsafe { target.CreateSolidColorBrush(&color, Some(&properties)) }
 }
 
-
-pub(crate) fn draw_line(target: &ID2D1HwndRenderTarget, points: &Vec<Point>, brush: &ID2D1SolidColorBrush, style: &ID2D1StrokeStyle, width: f32) {
+pub(crate) fn draw_line(
+    target: &ID2D1HwndRenderTarget,
+    points: &Vec<Point>,
+    brush: &ID2D1SolidColorBrush,
+    style: &ID2D1StrokeStyle,
+    width: f32,
+) {
     let mut p1 = &points[0];
     for p2 in points.iter().skip(1) {
         unsafe {

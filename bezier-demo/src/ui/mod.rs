@@ -7,7 +7,7 @@ use windows::{
     w,
     Win32::{
         Foundation::{GetLastError, HINSTANCE, HWND, LPARAM, LRESULT, WPARAM},
-        Graphics::{Gdi::HBRUSH, Direct2D::ID2D1Factory1},
+        Graphics::{Direct2D::ID2D1Factory1, Gdi::HBRUSH},
         System::LibraryLoader::GetModuleHandleW,
         UI::WindowsAndMessaging::{
             CreateWindowExW, DefWindowProcW, GetWindowLongPtrA, LoadCursorW, MoveWindow,
@@ -41,7 +41,10 @@ pub(crate) struct MainWindow<'a> {
 }
 
 impl<'a> MainWindow<'a> {
-    pub(crate) fn new(title: &'static str, factory: &'a ID2D1Factory1) -> windows::core::Result<Box<Self>> {
+    pub(crate) fn new(
+        title: &'static str,
+        factory: &'a ID2D1Factory1,
+    ) -> windows::core::Result<Box<Self>> {
         let instance = unsafe { GetModuleHandleW(None)? };
         // synchronization for a one time initialization of FFI call
         REGISTER_WINDOW_CLASS.call_once(|| {

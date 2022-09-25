@@ -1,4 +1,4 @@
-use crate::feature::{BezierFeature, BezierFeatureType, road::Road};
+use crate::feature::{road::Road, BezierFeature, BezierFeatureType};
 use geometry::Point;
 
 use std::sync::Once;
@@ -8,9 +8,13 @@ use windows::{
         Foundation::RECT,
         Graphics::{
             Direct2D::{
-                Common::{D2D1_COLOR_F, D2D_POINT_2F, D2D_SIZE_U, D2D1_FIGURE_BEGIN_FILLED, D2D1_FIGURE_END_CLOSED, D2D1_FILL_MODE_WINDING},
-                ID2D1HwndRenderTarget, D2D1_ELLIPSE, D2D1_HWND_RENDER_TARGET_PROPERTIES,
-                D2D1_PRESENT_OPTIONS, D2D1_RENDER_TARGET_PROPERTIES, ID2D1PathGeometry, 
+                Common::{
+                    D2D1_COLOR_F, D2D1_FIGURE_BEGIN_FILLED, D2D1_FIGURE_END_CLOSED,
+                    D2D1_FILL_MODE_WINDING, D2D_POINT_2F, D2D_SIZE_U,
+                },
+                ID2D1HwndRenderTarget, ID2D1PathGeometry, D2D1_ELLIPSE,
+                D2D1_HWND_RENDER_TARGET_PROPERTIES, D2D1_PRESENT_OPTIONS,
+                D2D1_RENDER_TARGET_PROPERTIES,
             },
             Gdi::InvalidateRect,
         },
@@ -167,9 +171,11 @@ impl<'a> FeatureWindow<'a> {
 
     pub(crate) fn set_feature_type(&mut self, feature_type: BezierFeatureType) {
         self.render_state.feature = feature_type;
-        unsafe { InvalidateRect(self.handle, None, false); }
+        unsafe {
+            InvalidateRect(self.handle, None, false);
+        }
     }
-    
+
     pub(crate) fn create_render_target(&mut self) -> Result<()> {
         unsafe {
             let mut rect: RECT = RECT::default();
@@ -226,7 +232,7 @@ impl<'a> FeatureWindow<'a> {
         if self.render_state.road.modified() {
             self.create_path_geom();
         }
-        let centerline  = self.render_state.road.curve();
+        let centerline = self.render_state.road.curve();
         let target = self.target.as_ref().unwrap();
         unsafe {
             target.Clear(Some(&D2D1_COLOR_F {
@@ -243,10 +249,22 @@ impl<'a> FeatureWindow<'a> {
             BezierFeatureType::River => self.water_brush.as_ref().unwrap(),
             BezierFeatureType::Railroad => self.control_brush.as_ref().unwrap(),
         };
-        unsafe { target.FillGeometry(test_geom, surface_brush, None, ) };
+        unsafe { target.FillGeometry(test_geom, surface_brush, None) };
 
-        direct2d::draw_line(target, &centerline, self.centerline_brush.as_ref().unwrap(), &self.line_style, 2.0);
-        direct2d::draw_line(target, &centerline, self.control_brush.as_ref().unwrap(), &self.line_style, 1.0);
+        direct2d::draw_line(
+            target,
+            &centerline,
+            self.centerline_brush.as_ref().unwrap(),
+            &self.line_style,
+            2.0,
+        );
+        direct2d::draw_line(
+            target,
+            &centerline,
+            self.control_brush.as_ref().unwrap(),
+            &self.line_style,
+            1.0,
+        );
         let mut ellipse = D2D1_ELLIPSE {
             radiusX: RENDER_CTRL_HANDLE_RADIUS,
             radiusY: RENDER_CTRL_HANDLE_RADIUS,
@@ -295,8 +313,6 @@ impl<'a> FeatureWindow<'a> {
         }
         Ok(())
     }
-
-
 
     fn message_handler(&mut self, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
         match message {
@@ -434,9 +450,9 @@ impl<'a> FeatureWindow<'a> {
     }
 
     fn create_path_geom(&mut self) {
-        let surface_geom = unsafe { self.factory.CreatePathGeometry()}.unwrap();
+        let surface_geom = unsafe { self.factory.CreatePathGeometry() }.unwrap();
         let points = self.render_state.road.surface();
-        let sink = unsafe {surface_geom.Open().unwrap()};
+        let sink = unsafe { surface_geom.Open().unwrap() };
         unsafe {
             sink.SetFillMode(D2D1_FILL_MODE_WINDING);
             sink.BeginFigure((*points[0]).into(), D2D1_FIGURE_BEGIN_FILLED);
@@ -448,7 +464,6 @@ impl<'a> FeatureWindow<'a> {
         }
         self.test_geom = Some(surface_geom);
     }
-
 }
 
 fn mouse_position(lparam: LPARAM) -> (f32, f32) {

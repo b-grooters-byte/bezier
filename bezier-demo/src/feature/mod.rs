@@ -1,3 +1,4 @@
+pub mod river;
 pub mod road;
 
 use geometry::{bezier::Bezier, Point};
@@ -11,7 +12,7 @@ const DEFAULT_WIDTH: f32 = 30.0;
 #[derive(Debug, Clone)]
 pub(crate) enum BezierFeatureType {
     Road,
-    River, 
+    River,
     Railroad,
 }
 
@@ -52,10 +53,7 @@ impl BezierFeature {
         road
     }
 
-    pub(crate) fn new_with_attributes(
-        width: f32,
-        edgeline_visible: bool,
-    ) -> Self {
+    pub(crate) fn new_with_attributes(width: f32, edgeline_visible: bool) -> Self {
         let b = Bezier::new_with_ctrl_point(
             [
                 Point { x: 10.0, y: 10.0 },
@@ -82,8 +80,12 @@ impl BezierFeature {
         road
     }
 
-    pub (crate) fn modified(&self) -> bool {
-        self.centerline.iter().filter(|b| b.modified()).next().is_some()
+    pub(crate) fn modified(&self) -> bool {
+        self.centerline
+            .iter()
+            .filter(|b| b.modified())
+            .next()
+            .is_some()
     }
 
     pub(crate) fn segments(&self) -> &Vec<Bezier> {
@@ -105,7 +107,7 @@ impl BezierFeature {
         }
     }
 
-    pub(crate) fn curve(&mut self) -> Vec<Point>{
+    pub(crate) fn curve(&mut self) -> Vec<Point> {
         let recalculate: Vec<bool> = self.centerline.iter().map(|b| b.modified()).collect();
         for (idx, r) in recalculate.iter().enumerate() {
             if *r {
@@ -113,7 +115,11 @@ impl BezierFeature {
                 self.calc_edge_curve(idx);
             }
         }
-        self.centerline.iter_mut().flat_map(|b| b.curve()).copied().collect()
+        self.centerline
+            .iter_mut()
+            .flat_map(|b| b.curve())
+            .copied()
+            .collect()
     }
 
     /// Gets the polygon path representing the surface of the road feature
@@ -132,7 +138,8 @@ impl BezierFeature {
             .collect::<Vec<&geometry::Point>>();
         let mut points_2pi: Vec<&geometry::Point> = self
             .edge_curve
-            .iter().rev()
+            .iter()
+            .rev()
             .flat_map(|v| v[1].iter().rev())
             .collect::<Vec<&geometry::Point>>();
 
@@ -192,7 +199,6 @@ impl BezierFeature {
                 y: curve[idx].y + tan_x * width,
             });
         }
-
     }
 
     /// Adds a new Bézier segment to an existing feature. Control points 0 and
