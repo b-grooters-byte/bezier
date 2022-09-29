@@ -22,7 +22,7 @@ pub(crate) enum CenterLine {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Road<'a> {
-    feature: BezierFeature,
+    feature: Option<BezierFeature>,
     surface_brush: Option<ID2D1SolidColorBrush>,
     centerline_brush: Option<ID2D1SolidColorBrush>,
     centerline: Option<[Vec<Vec<Point>>; 2]>,
@@ -37,7 +37,7 @@ impl<'a> Road<'a> {
         let line_style =
             direct2d::create_style(factory, None).expect("unable to create stroke style");
         Road {
-            feature: BezierFeature::new(),
+            feature: None, //BezierFeature::new(),
             surface_brush: None,
             centerline_brush: None,
             centerline: None,
@@ -48,20 +48,27 @@ impl<'a> Road<'a> {
         }
     }
 
-    pub(crate) fn feature(&self) -> &BezierFeature {
-        &self.feature
+    pub(crate) fn feature(&self) -> Option<&BezierFeature> {
+        self.feature.as_ref()
     }
 
-    pub(crate) fn feature_mut(&mut self) -> &mut BezierFeature {
-        &mut self.feature
+    pub(crate) fn feature_mut(&mut self) -> Option<&mut BezierFeature> {
+        self.feature.as_mut()
     }
 
     pub(crate) fn set_feature(&mut self, feature: BezierFeature) {
-        self.feature = feature;
+        self.feature = Some(feature);
+    }
+
+    pub(crate) fn take_feature(&mut self) -> Option<BezierFeature> {
+        self.feature.take()
     }
 
     pub(crate) fn modified(&self) -> bool {
-        self.feature.modified()
+        match &self.feature {
+            Some(feature) => feature.modified(),
+            _ => false
+        }
     }
 
     fn create_resources(&mut self, target: &ID2D1HwndRenderTarget) -> windows::core::Result<()> {
@@ -90,8 +97,13 @@ impl<'a> Road<'a> {
     }
 
     fn draw(&mut self, target: ID2D1HwndRenderTarget) {
-        let rebuild_geom = self.feature.modified();
-        let centerline = self.feature.curve();
+        if self.feature.is_none() {
+            return;
+        }
+
+        let feature = self.feature.as_mut().unwrap();
+        let rebuild_geom = feature.modified();
+        let centerline = feature.curve();
         if rebuild_geom {
             self.rebuild_geometry();
         }
@@ -112,8 +124,12 @@ impl<'a> Road<'a> {
     }
 
     fn rebuild_geometry(&mut self) {
+        if self.feature.is_none() {
+            return;
+        }
+
         let surface_geom = unsafe { self.factory.CreatePathGeometry() }.unwrap();
-        let points = self.feature.surface();
+        let points = self.feature.as_mut().unwrap().surface();
         let sink = unsafe { surface_geom.Open().unwrap() };
         unsafe {
             sink.SetFillMode(D2D1_FILL_MODE_WINDING);
