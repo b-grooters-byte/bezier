@@ -52,35 +52,36 @@ const RENDER_CTRL_HANDLE_RADIUS: f32 = 5.0;
 static REGISTER_FEATURE_WINDOW_CLASS: Once = Once::new();
 static FEATURE_WINDOW_CLASS_NAME: &HSTRING = w!("bytetrail.window.bezier-demo");
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct RenderState<'a> {
-    //    pub(crate) bezier: Bezier,
-    pub(crate) road: BezierFeature,
     pub hover: Option<usize>,
     pub selected: Option<usize>,
     pub feature: BezierFeatureType,
-    pub real_road: Option<Road<'a>>,
+    pub road_visual: Road<'a>,
 }
 
 impl<'a> RenderState<'a> {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(factory: &'a ID2D1Factory1) -> Self {
         let mut road = BezierFeature::new_with_attributes(30.0, false);
         road.set_ctrl_point(0, Point { x: 10.0, y: 10.0 });
         road.set_ctrl_point(1, Point { x: 100.0, y: 10.0 });
         road.set_ctrl_point(2, Point { x: 100.0, y: 200.0 });
         road.set_ctrl_point(3, Point { x: 200.0, y: 200.0 });
         road.add_segment(Point { x: 300.0, y: 300.0 }, Point { x: 300.0, y: 400.0 });
+
+        let mut road_visual = Road::new(factory);
+        road_visual.set_feature(road);
+
         RenderState {
-            road,
             hover: None,
             selected: None,
             feature: BezierFeatureType::Road,
-            real_road: None,
+            road_visual,
         }
     }
 
     fn in_control_point(&self, x: f32, y: f32) -> Option<usize> {
-        for (idx, ctrl) in self.road.into_iter().enumerate() {
+        for (idx, ctrl) in self.road_visual.feature().unwrap().into_iter().enumerate() {
             if ctrl.dist_to_xy(x, y) <= RENDER_CTRL_HANDLE_RADIUS {
                 return Some(idx);
             }
@@ -129,9 +130,7 @@ impl<'a> FeatureWindow<'a> {
         let mut dpiy = 0.0;
         unsafe { factory.GetDesktopDpi(&mut dpix, &mut dpiy) };
 
-        let road = Some(Road::new(&factory));
-        let mut render_state = RenderState::new();
-        render_state.real_road = road;
+        let mut render_state = RenderState::new(&factory);
         let mut window_internal = Box::new(Self {
             handle: HWND(0),
             render_state,
@@ -214,12 +213,13 @@ impl<'a> FeatureWindow<'a> {
             self.create_render_target()?;
             let target = self.target.as_ref().unwrap();
             unsafe { target.SetDpi(self.dpi, self.dpi) };
+            self.render_state.road_visual.create_resources(target);
             self.control_brush = create_brush(target, 0.25, 0.25, 0.25, 1.0).ok();
             self.line_brush = create_brush(target, 0.0, 0.0, 0.0, 1.0).ok();
             self.selected_brush = create_brush(target, 0.75, 0.0, 0.0, 1.0).ok();
             self.centerline_brush = create_brush(target, 0.98, 0.665, 0.0, 1.0).ok();
             self.water_brush = create_brush(target, 0.0, 0.65, 0.93, 1.0).ok();
-            self.create_path_geom();
+            // self.create_path_geom();
         }
         // draw
         unsafe { self.target.as_ref().unwrap().BeginDraw() };
@@ -229,10 +229,7 @@ impl<'a> FeatureWindow<'a> {
     }
 
     fn draw(&mut self) -> Result<()> {
-        if self.render_state.road.modified() {
-            self.create_path_geom();
-        }
-        let centerline = self.render_state.road.curve();
+        let centerline = self.render_state.road_visual.feature_mut().unwrap().curve();
         let target = self.target.as_ref().unwrap();
         unsafe {
             target.Clear(Some(&D2D1_COLOR_F {
@@ -243,21 +240,22 @@ impl<'a> FeatureWindow<'a> {
             }));
         }
         // draw the surface
-        let test_geom = self.test_geom.as_ref().unwrap();
-        let surface_brush = match self.render_state.feature {
-            BezierFeatureType::Road => self.control_brush.as_ref().unwrap(),
-            BezierFeatureType::River => self.water_brush.as_ref().unwrap(),
-            BezierFeatureType::Railroad => self.control_brush.as_ref().unwrap(),
-        };
-        unsafe { target.FillGeometry(test_geom, surface_brush, None) };
+        self.render_state.road_visual.draw(target);
+        // let test_geom = self.test_geom.as_ref().unwrap();
+        // let surface_brush = match self.render_state.feature {
+        //     BezierFeatureType::Road => self.control_brush.as_ref().unwrap(),
+        //     BezierFeatureType::River => self.water_brush.as_ref().unwrap(),
+        //     BezierFeatureType::Railroad => self.control_brush.as_ref().unwrap(),
+        // };
+        // unsafe { target.FillGeometry(test_geom, surface_brush, None) };
 
-        direct2d::draw_line(
-            target,
-            &centerline,
-            self.centerline_brush.as_ref().unwrap(),
-            &self.line_style,
-            2.0,
-        );
+        // direct2d::draw_line(
+        //     target,
+        //     &centerline,
+        //     self.centerline_brush.as_ref().unwrap(),
+        //     &self.line_style,
+        //     2.0,
+        // );
         direct2d::draw_line(
             target,
             &centerline,
@@ -270,7 +268,14 @@ impl<'a> FeatureWindow<'a> {
             radiusY: RENDER_CTRL_HANDLE_RADIUS,
             ..Default::default()
         };
-        for (idx, ctrl) in self.render_state.road.into_iter().enumerate() {
+        for (idx, ctrl) in self
+            .render_state
+            .road_visual
+            .feature()
+            .unwrap()
+            .into_iter()
+            .enumerate()
+        {
             ellipse.point = D2D_POINT_2F {
                 x: ctrl.x,
                 y: ctrl.y,
@@ -291,7 +296,7 @@ impl<'a> FeatureWindow<'a> {
                 );
             }
             let ctrl_brush = self.control_brush.as_ref().unwrap();
-            for segment in self.render_state.road.segments() {
+            for segment in self.render_state.road_visual.feature().unwrap().segments() {
                 let ctrl_points = segment.ctrl_points();
                 unsafe {
                     target.DrawLine(
@@ -357,9 +362,17 @@ impl<'a> FeatureWindow<'a> {
                 let idx = self.render_state.in_control_point(x, y);
                 if wparam.0 == MK_LBUTTON as usize {
                     if let Some(selected) = self.render_state.selected {
-                        let current = self.render_state.road.ctrl_point(selected).unwrap();
+                        let current = self
+                            .render_state
+                            .road_visual
+                            .feature()
+                            .unwrap()
+                            .ctrl_point(selected)
+                            .unwrap();
                         self.render_state
-                            .road
+                            .road_visual
+                            .feature_mut()
+                            .unwrap()
                             .set_ctrl_point(selected, Point { x, y });
                         let top = (current.y.min(y) - RENDER_CTRL_HANDLE_RADIUS) as i32;
                         let bottom = (current.y.max(y) + RENDER_CTRL_HANDLE_RADIUS) as i32;
@@ -380,7 +393,13 @@ impl<'a> FeatureWindow<'a> {
                     }
                 }
                 if let Some(idx) = idx {
-                    let ctrl = &self.render_state.road.ctrl_point(idx).unwrap();
+                    let ctrl = &self
+                        .render_state
+                        .road_visual
+                        .feature()
+                        .unwrap()
+                        .ctrl_point(idx)
+                        .unwrap();
                     if self.render_state.hover.is_none() {
                         self.render_state.hover = Some(idx);
                         unsafe {
@@ -399,7 +418,13 @@ impl<'a> FeatureWindow<'a> {
                 } else {
                     // last state was hover
                     if let Some(hover) = self.render_state.hover {
-                        let ctrl = &self.render_state.road.ctrl_point(hover).unwrap();
+                        let ctrl = &self
+                            .render_state
+                            .road_visual
+                            .feature()
+                            .unwrap()
+                            .ctrl_point(hover)
+                            .unwrap();
                         // left the active control point boundary
                         self.render_state.hover = None;
                         unsafe {
@@ -447,22 +472,6 @@ impl<'a> FeatureWindow<'a> {
             }
         }
         DefWindowProcW(window, message, wparam, lparam)
-    }
-
-    fn create_path_geom(&mut self) {
-        let surface_geom = unsafe { self.factory.CreatePathGeometry() }.unwrap();
-        let points = self.render_state.road.surface();
-        let sink = unsafe { surface_geom.Open().unwrap() };
-        unsafe {
-            sink.SetFillMode(D2D1_FILL_MODE_WINDING);
-            sink.BeginFigure((*points[0]).into(), D2D1_FIGURE_BEGIN_FILLED);
-            for (_, point) in points.iter().enumerate().skip(1) {
-                sink.AddLine((**point).into());
-            }
-            sink.EndFigure(D2D1_FIGURE_END_CLOSED);
-            sink.Close().expect("unable to create geometry");
-        }
-        self.test_geom = Some(surface_geom);
     }
 }
 

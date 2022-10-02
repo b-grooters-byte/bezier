@@ -2,6 +2,10 @@ pub mod river;
 pub mod road;
 
 use geometry::{bezier::Bezier, Point};
+use windows::Win32::Graphics::Direct2D::{
+    Common::{D2D1_FIGURE_BEGIN_FILLED, D2D1_FIGURE_END_CLOSED, D2D1_FILL_MODE_WINDING},
+    ID2D1Factory1, ID2D1PathGeometry,
+};
 
 const DEFAULT_RESOLUTION: f32 = 0.025;
 const DERIVED_CTRL_POINT: usize = 3;
@@ -16,7 +20,7 @@ pub(crate) enum BezierFeatureType {
     Railroad,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct BezierFeature {
     resolution: f32,
     pub centerline: Vec<Bezier>,
@@ -302,4 +306,23 @@ impl<'a> Iterator for ControlPointIterator<'a> {
         }
         None
     }
+}
+
+pub(crate) fn rebuild_geometry(
+    feature: &mut BezierFeature,
+    factory: &ID2D1Factory1,
+) -> ID2D1PathGeometry {
+    let surface_geom = unsafe { factory.CreatePathGeometry() }.unwrap();
+    let points = feature.surface();
+    let sink = unsafe { surface_geom.Open().unwrap() };
+    unsafe {
+        sink.SetFillMode(D2D1_FILL_MODE_WINDING);
+        sink.BeginFigure((*points[0]).into(), D2D1_FIGURE_BEGIN_FILLED);
+        for (_, point) in points.iter().enumerate().skip(1) {
+            sink.AddLine((**point).into());
+        }
+        sink.EndFigure(D2D1_FIGURE_END_CLOSED);
+        sink.Close().expect("unable to create geometry");
+    }
+    surface_geom
 }

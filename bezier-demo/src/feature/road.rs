@@ -1,9 +1,7 @@
 use crate::ui::direct2d::{self, create_brush};
 use geometry::Point;
 use windows::Win32::Graphics::Direct2D::{
-    Common::{D2D1_FIGURE_BEGIN_FILLED, D2D1_FIGURE_END_CLOSED, D2D1_FILL_MODE_WINDING},
-    ID2D1Factory1, ID2D1HwndRenderTarget, ID2D1PathGeometry, ID2D1SolidColorBrush,
-    ID2D1StrokeStyle,
+    ID2D1Factory1, ID2D1HwndRenderTarget, ID2D1PathGeometry, ID2D1SolidColorBrush, ID2D1StrokeStyle,
 };
 
 use super::BezierFeature;
@@ -20,7 +18,7 @@ pub(crate) enum CenterLine {
     StripeSolid,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct Road<'a> {
     feature: Option<BezierFeature>,
     surface_brush: Option<ID2D1SolidColorBrush>,
@@ -67,11 +65,14 @@ impl<'a> Road<'a> {
     pub(crate) fn modified(&self) -> bool {
         match &self.feature {
             Some(feature) => feature.modified(),
-            _ => false
+            _ => false,
         }
     }
 
-    fn create_resources(&mut self, target: &ID2D1HwndRenderTarget) -> windows::core::Result<()> {
+    pub(crate) fn create_resources(
+        &mut self,
+        target: &ID2D1HwndRenderTarget,
+    ) -> windows::core::Result<()> {
         self.surface_brush = Some(create_brush(
             target,
             ASPHALT_GRAY,
@@ -90,13 +91,13 @@ impl<'a> Road<'a> {
         Ok(())
     }
 
-    fn release_resources(&mut self) {
+    pub(crate) fn release_resources(&mut self) {
         self.surface_brush = None;
         self.centerline_brush = None;
         self.surface = None;
     }
 
-    fn draw(&mut self, target: ID2D1HwndRenderTarget) {
+    pub(crate) fn draw(&mut self, target: &ID2D1HwndRenderTarget) {
         if self.feature.is_none() {
             return;
         }
@@ -104,9 +105,13 @@ impl<'a> Road<'a> {
         let feature = self.feature.as_mut().unwrap();
         let rebuild_geom = feature.modified();
         let centerline = feature.curve();
-        if rebuild_geom {
-            self.rebuild_geometry();
-        }
+       // if rebuild_geom {
+            println!("Rebuilding geometry");
+            self.surface = Some(super::rebuild_geometry(
+                self.feature.as_mut().unwrap(),
+                self.factory,
+            ));
+      //  }
         unsafe {
             target.FillGeometry(
                 self.surface.as_ref().unwrap(),
@@ -121,25 +126,5 @@ impl<'a> Road<'a> {
             &self.line_style,
             2.0,
         );
-    }
-
-    fn rebuild_geometry(&mut self) {
-        if self.feature.is_none() {
-            return;
-        }
-
-        let surface_geom = unsafe { self.factory.CreatePathGeometry() }.unwrap();
-        let points = self.feature.as_mut().unwrap().surface();
-        let sink = unsafe { surface_geom.Open().unwrap() };
-        unsafe {
-            sink.SetFillMode(D2D1_FILL_MODE_WINDING);
-            sink.BeginFigure((*points[0]).into(), D2D1_FIGURE_BEGIN_FILLED);
-            for (_, point) in points.iter().enumerate().skip(1) {
-                sink.AddLine((**point).into());
-            }
-            sink.EndFigure(D2D1_FIGURE_END_CLOSED);
-            sink.Close().expect("unable to create geometry");
-        }
-        self.surface = Some(surface_geom);
     }
 }
