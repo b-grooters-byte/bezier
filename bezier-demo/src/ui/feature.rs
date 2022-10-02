@@ -8,13 +8,9 @@ use windows::{
         Foundation::RECT,
         Graphics::{
             Direct2D::{
-                Common::{
-                    D2D1_COLOR_F, D2D1_FIGURE_BEGIN_FILLED, D2D1_FIGURE_END_CLOSED,
-                    D2D1_FILL_MODE_WINDING, D2D_POINT_2F, D2D_SIZE_U,
-                },
-                ID2D1HwndRenderTarget, ID2D1PathGeometry, D2D1_ELLIPSE,
-                D2D1_HWND_RENDER_TARGET_PROPERTIES, D2D1_PRESENT_OPTIONS,
-                D2D1_RENDER_TARGET_PROPERTIES,
+                Common::{D2D1_COLOR_F, D2D_POINT_2F, D2D_SIZE_U},
+                ID2D1HwndRenderTarget, D2D1_ELLIPSE, D2D1_HWND_RENDER_TARGET_PROPERTIES,
+                D2D1_PRESENT_OPTIONS, D2D1_RENDER_TARGET_PROPERTIES,
             },
             Gdi::InvalidateRect,
         },
@@ -43,7 +39,7 @@ use windows::{
     },
 };
 
-use crate::ui::direct2d::{create_brush, create_factory, create_style};
+use crate::ui::direct2d::{create_brush, create_style};
 
 use super::direct2d;
 
@@ -95,10 +91,8 @@ pub(crate) struct FeatureWindow<'a> {
     factory: &'a ID2D1Factory1,
     line_style: ID2D1StrokeStyle,
     ctrl_style: ID2D1StrokeStyle,
-    test_geom: Option<ID2D1PathGeometry>,
     target: Option<ID2D1HwndRenderTarget>,
     line_brush: Option<ID2D1SolidColorBrush>,
-    centerline_brush: Option<ID2D1SolidColorBrush>,
     selected_brush: Option<ID2D1SolidColorBrush>,
     control_brush: Option<ID2D1SolidColorBrush>,
     water_brush: Option<ID2D1SolidColorBrush>,
@@ -130,16 +124,14 @@ impl<'a> FeatureWindow<'a> {
         let mut dpiy = 0.0;
         unsafe { factory.GetDesktopDpi(&mut dpix, &mut dpiy) };
 
-        let mut render_state = RenderState::new(&factory);
+        let render_state = RenderState::new(&factory);
         let mut window_internal = Box::new(Self {
             handle: HWND(0),
             render_state,
             factory,
             line_style,
             ctrl_style,
-            test_geom: None,
             line_brush: None,
-            centerline_brush: None,
             selected_brush: None,
             control_brush: None,
             water_brush: None,
@@ -200,8 +192,8 @@ impl<'a> FeatureWindow<'a> {
     }
 
     fn release_device_resources(&mut self) {
+        self.render_state.road_visual.release_resources();
         self.line_brush = None;
-        self.centerline_brush = None;
         self.control_brush = None;
         self.selected_brush = None;
         self.water_brush = None;
@@ -213,11 +205,10 @@ impl<'a> FeatureWindow<'a> {
             self.create_render_target()?;
             let target = self.target.as_ref().unwrap();
             unsafe { target.SetDpi(self.dpi, self.dpi) };
-            self.render_state.road_visual.create_resources(target);
+            self.render_state.road_visual.create_resources(target)?;
             self.control_brush = create_brush(target, 0.25, 0.25, 0.25, 1.0).ok();
             self.line_brush = create_brush(target, 0.0, 0.0, 0.0, 1.0).ok();
             self.selected_brush = create_brush(target, 0.75, 0.0, 0.0, 1.0).ok();
-            self.centerline_brush = create_brush(target, 0.98, 0.665, 0.0, 1.0).ok();
             self.water_brush = create_brush(target, 0.0, 0.65, 0.93, 1.0).ok();
             // self.create_path_geom();
         }
@@ -239,23 +230,7 @@ impl<'a> FeatureWindow<'a> {
                 a: 1.0,
             }));
         }
-        // draw the surface
         self.render_state.road_visual.draw(target);
-        // let test_geom = self.test_geom.as_ref().unwrap();
-        // let surface_brush = match self.render_state.feature {
-        //     BezierFeatureType::Road => self.control_brush.as_ref().unwrap(),
-        //     BezierFeatureType::River => self.water_brush.as_ref().unwrap(),
-        //     BezierFeatureType::Railroad => self.control_brush.as_ref().unwrap(),
-        // };
-        // unsafe { target.FillGeometry(test_geom, surface_brush, None) };
-
-        // direct2d::draw_line(
-        //     target,
-        //     &centerline,
-        //     self.centerline_brush.as_ref().unwrap(),
-        //     &self.line_style,
-        //     2.0,
-        // );
         direct2d::draw_line(
             target,
             &centerline,

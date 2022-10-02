@@ -103,15 +103,14 @@ impl<'a> Road<'a> {
         }
 
         let feature = self.feature.as_mut().unwrap();
-        let rebuild_geom = feature.modified();
+        //let rebuild_geom = feature.modified();
         let centerline = feature.curve();
-       // if rebuild_geom {
-            println!("Rebuilding geometry");
-            self.surface = Some(super::rebuild_geometry(
-                self.feature.as_mut().unwrap(),
-                self.factory,
-            ));
-      //  }
+        // if rebuild_geom {
+        self.surface = Some(super::rebuild_geometry(
+            self.feature.as_mut().unwrap(),
+            self.factory,
+        ));
+        //  }
         unsafe {
             target.FillGeometry(
                 self.surface.as_ref().unwrap(),
