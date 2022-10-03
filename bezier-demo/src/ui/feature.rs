@@ -5,16 +5,16 @@ use std::sync::Once;
 use windows::{
     core::HRESULT,
     Win32::{
-        Foundation::RECT,
+        Foundation::{RECT, COLORREF},
         Graphics::{
             Direct2D::{
                 Common::{D2D1_COLOR_F, D2D_POINT_2F, D2D_SIZE_U},
                 ID2D1HwndRenderTarget, D2D1_ELLIPSE, D2D1_HWND_RENDER_TARGET_PROPERTIES,
                 D2D1_PRESENT_OPTIONS, D2D1_RENDER_TARGET_PROPERTIES,
             },
-            Gdi::InvalidateRect,
+            Gdi::{InvalidateRect},
         },
-        System::LibraryLoader::GetModuleHandleW,
+        System::{LibraryLoader::GetModuleHandleW, SystemServices::MK_LBUTTON},
         UI::WindowsAndMessaging::{
             GetClientRect, GetWindowLongPtrA, SetWindowLongPtrA, CREATESTRUCTA, GWLP_USERDATA,
             WM_CREATE, WM_LBUTTONDOWN, WM_LBUTTONUP, WS_CHILDWINDOW, WS_CLIPSIBLINGS, WS_HSCROLL,
@@ -33,7 +33,7 @@ use windows::{
         },
         UI::WindowsAndMessaging::{
             CreateWindowExW, DefWindowProcW, LoadCursorW, PostQuitMessage, RegisterClassW,
-            COLOR_WINDOW, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, HMENU, IDC_ARROW, MK_LBUTTON,
+            CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, HMENU, IDC_ARROW, 
             WINDOW_EX_STYLE, WM_DESTROY, WM_MOUSEMOVE, WM_PAINT, WM_SIZE, WNDCLASSW, WS_VISIBLE,
         },
     },
@@ -109,11 +109,11 @@ impl<'a> FeatureWindow<'a> {
         REGISTER_FEATURE_WINDOW_CLASS.call_once(|| {
             // use defaults for all other fields
             let class = WNDCLASSW {
-                lpfnWndProc: Some(Self::wnd_proc),
-                hbrBackground: unsafe { CreateSolidBrush(COLOR_WINDOW.0) },
-                hInstance: instance,
                 style: CS_HREDRAW | CS_VREDRAW,
+                lpfnWndProc: Some(Self::wnd_proc),
+                hInstance: instance,
                 hCursor: unsafe { LoadCursorW(HINSTANCE(0), IDC_ARROW).ok().unwrap() },
+                hbrBackground: unsafe { CreateSolidBrush(COLORREF(0))},
                 lpszClassName: FEATURE_WINDOW_CLASS_NAME.into(),
                 ..Default::default()
             };
@@ -153,7 +153,7 @@ impl<'a> FeatureWindow<'a> {
                 parent,
                 HMENU(0),
                 instance,
-                window_internal.as_mut() as *mut _ as _,
+                Some(window_internal.as_mut() as *mut _ as _),
             )
         };
         //        unsafe { ShowWindow(window, SW_SHOW) };
@@ -224,9 +224,9 @@ impl<'a> FeatureWindow<'a> {
         let target = self.target.as_ref().unwrap();
         unsafe {
             target.Clear(Some(&D2D1_COLOR_F {
-                r: 0.95,
-                g: 0.95,
-                b: 0.95,
+                r: 0.98,
+                g: 0.98,
+                b: 0.98,
                 a: 1.0,
             }));
         }
@@ -335,7 +335,7 @@ impl<'a> FeatureWindow<'a> {
             WM_MOUSEMOVE => {
                 let (x, y) = mouse_position(lparam);
                 let idx = self.render_state.in_control_point(x, y);
-                if wparam.0 == MK_LBUTTON as usize {
+                if wparam.0 == MK_LBUTTON.0 as usize {
                     if let Some(selected) = self.render_state.selected {
                         let current = self
                             .render_state

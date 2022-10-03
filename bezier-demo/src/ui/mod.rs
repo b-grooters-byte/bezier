@@ -7,12 +7,12 @@ use windows::{
     w,
     Win32::{
         Foundation::{GetLastError, HINSTANCE, HWND, LPARAM, LRESULT, WPARAM},
-        Graphics::{Direct2D::ID2D1Factory1, Gdi::HBRUSH},
+        Graphics::{Direct2D::ID2D1Factory1, Gdi::{HBRUSH, COLOR_WINDOW}},
         System::LibraryLoader::GetModuleHandleW,
         UI::WindowsAndMessaging::{
             CreateWindowExW, DefWindowProcW, GetWindowLongPtrA, LoadCursorW, MoveWindow,
             PostQuitMessage, RegisterClassW, SendMessageW, SetWindowLongPtrA, ShowWindow,
-            BM_SETCHECK, BS_GROUPBOX, BS_RADIOBUTTON, COLOR_WINDOW, CREATESTRUCTA, CS_HREDRAW,
+            BM_SETCHECK, BS_GROUPBOX, BS_RADIOBUTTON, CREATESTRUCTA, CS_HREDRAW,
             CS_VREDRAW, CW_USEDEFAULT, GWLP_USERDATA, HMENU, IDC_ARROW, SW_SHOW, WINDOW_EX_STYLE,
             WINDOW_STYLE, WM_COMMAND, WM_CREATE, WM_DESTROY, WM_SIZE, WNDCLASSW, WS_CHILD,
             WS_OVERLAPPEDWINDOW, WS_VISIBLE,
@@ -84,7 +84,7 @@ impl<'a> MainWindow<'a> {
                 HWND(0),
                 HMENU(0),
                 instance,
-                main_window.as_mut() as *mut _ as _,
+                Some(main_window.as_mut() as *mut _ as _),
             )
         };
         unsafe { ShowWindow(window, SW_SHOW) };
@@ -127,7 +127,7 @@ impl<'a> MainWindow<'a> {
                                 self.handle,
                                 HMENU(100),
                                 instance,
-                                std::ptr::null_mut(),
+                                None,
                             )
                         };
                         self.road_rb = Some(MainWindow::create_selector(
@@ -232,7 +232,7 @@ impl<'a> MainWindow<'a> {
                 parent,
                 HMENU(id),
                 instance,
-                std::ptr::null_mut(),
+                None,
             )
         }
     }

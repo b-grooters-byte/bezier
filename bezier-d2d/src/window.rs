@@ -11,9 +11,9 @@ use windows::{
                 ID2D1HwndRenderTarget, D2D1_ELLIPSE, D2D1_HWND_RENDER_TARGET_PROPERTIES,
                 D2D1_PRESENT_OPTIONS, D2D1_RENDER_TARGET_PROPERTIES,
             },
-            Gdi::InvalidateRect,
+            Gdi::{InvalidateRect, COLOR_WINDOW},
         },
-        System::LibraryLoader::GetModuleHandleW,
+        System::{LibraryLoader::GetModuleHandleW, SystemServices::MK_LBUTTON},
         UI::WindowsAndMessaging::{
             GetClientRect, GetWindowLongPtrA, SetWindowLongPtrA, CREATESTRUCTA, GWLP_USERDATA,
             WM_CREATE, WM_LBUTTONDOWN, WM_LBUTTONUP,
@@ -31,8 +31,8 @@ use windows::{
         },
         UI::WindowsAndMessaging::{
             CreateWindowExW, DefWindowProcW, LoadCursorW, PostQuitMessage, RegisterClassW,
-            ShowWindow, COLOR_WINDOW, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, HMENU, IDC_ARROW,
-            MK_LBUTTON, SW_SHOW, WINDOW_EX_STYLE, WM_DESTROY, WM_MOUSEMOVE, WM_PAINT, WM_SIZE,
+            ShowWindow, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, HMENU, IDC_ARROW,
+            SW_SHOW, WINDOW_EX_STYLE, WM_DESTROY, WM_MOUSEMOVE, WM_PAINT, WM_SIZE,
             WNDCLASSW, WS_OVERLAPPEDWINDOW, WS_VISIBLE,
         },
     },
@@ -103,7 +103,7 @@ impl Window {
             // use defaults for all other fields
             let class = WNDCLASSW {
                 lpfnWndProc: Some(Self::wnd_proc),
-                hbrBackground: unsafe { CreateSolidBrush(COLOR_WINDOW.0) },
+                hbrBackground: unsafe { CreateSolidBrush(COLOR_WINDOW.into()) },
                 hInstance: instance,
                 style: CS_HREDRAW | CS_VREDRAW,
                 hCursor: unsafe { LoadCursorW(HINSTANCE(0), IDC_ARROW).ok().unwrap() },
@@ -144,7 +144,7 @@ impl Window {
                 HWND(0),
                 HMENU(0),
                 instance,
-                window_internal.as_mut() as *mut _ as _,
+                Some(window_internal.as_mut() as *mut _ as _),
             )
         };
         unsafe { ShowWindow(window, SW_SHOW) };
@@ -306,7 +306,7 @@ impl Window {
             WM_MOUSEMOVE => {
                 let (x, y) = mouse_position(lparam);
                 let idx = self.render_state.in_control_point(x, y);
-                if wparam.0 == MK_LBUTTON as usize {
+                if wparam.0 == MK_LBUTTON.0 as usize {
                     if let Some(selected) = self.render_state.selected {
                         let current = self.render_state.bezier.ctrl_point(selected);
                         self.render_state
