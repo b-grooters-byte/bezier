@@ -20,6 +20,7 @@ pub(crate) enum CenterLine {
 
 #[derive(Debug)]
 pub(crate) struct Road<'a> {
+    modified: bool,
     feature: Option<BezierFeature>,
     surface_brush: Option<ID2D1SolidColorBrush>,
     centerline_brush: Option<ID2D1SolidColorBrush>,
@@ -35,7 +36,8 @@ impl<'a> Road<'a> {
         let line_style =
             direct2d::create_style(factory, None).expect("unable to create stroke style");
         Road {
-            feature: None, //BezierFeature::new(),
+            modified: false,
+            feature: None, 
             surface_brush: None,
             centerline_brush: None,
             centerline: None,
@@ -51,10 +53,12 @@ impl<'a> Road<'a> {
     }
 
     pub(crate) fn feature_mut(&mut self) -> Option<&mut BezierFeature> {
+        self.modified = true;
         self.feature.as_mut()
     }
 
     pub(crate) fn set_feature(&mut self, feature: BezierFeature) {
+        self.modified = true;
         self.feature = Some(feature);
     }
 
@@ -63,7 +67,7 @@ impl<'a> Road<'a> {
     }
 
     pub(crate) fn modified(&self) -> bool {
-        match &self.feature {
+        self.modified | match &self.feature {
             Some(feature) => feature.modified(),
             _ => false,
         }
@@ -103,14 +107,14 @@ impl<'a> Road<'a> {
         }
 
         let feature = self.feature.as_mut().unwrap();
-        //let rebuild_geom = feature.modified();
+        let rebuild_geom = self.modified | feature.modified();
         let centerline = feature.curve();
-        // if rebuild_geom {
-        self.surface = Some(super::rebuild_geometry(
-            self.feature.as_mut().unwrap(),
-            self.factory,
-        ));
-        //  }
+        if rebuild_geom {
+            self.surface = Some(super::rebuild_geometry(
+                self.feature.as_mut().unwrap(),
+                self.factory,
+            ));
+        }
         unsafe {
             target.FillGeometry(
                 self.surface.as_ref().unwrap(),
@@ -125,5 +129,6 @@ impl<'a> Road<'a> {
             &self.line_style,
             2.0,
         );
+        self.modified = false;
     }
 }
