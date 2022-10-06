@@ -18,7 +18,6 @@ pub(crate) enum CenterLine {
     StripeSolid,
 }
 
-#[derive(Debug)]
 pub(crate) struct Road<'a> {
     modified: bool,
     feature: Option<BezierFeature>,

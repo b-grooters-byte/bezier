@@ -5,8 +5,8 @@ use windows::Win32::Graphics::Direct2D::{
 
 use super::BezierFeature;
 
-#[derive(Debug)]
 pub(crate) struct River<'a> {
+    modified: bool,
     feature: Option<BezierFeature>,
     surface_brush: Option<ID2D1SolidColorBrush>,
     edgeline: Option<[Vec<Vec<Point>>; 2]>,
@@ -17,6 +17,7 @@ pub(crate) struct River<'a> {
 impl<'a> River<'a> {
     pub(crate) fn new(factory: &'a ID2D1Factory1) -> Self {
         River {
+            modified: true,
             feature: None,
             surface_brush: None,
             edgeline: None,
@@ -42,7 +43,7 @@ impl<'a> River<'a> {
     }
 
     pub(crate) fn modified(&self) -> bool {
-        match &self.feature {
+        self.modified | match &self.feature {
             Some(feature) => feature.modified(),
             _ => false,
         }
@@ -52,14 +53,13 @@ impl<'a> River<'a> {
         if self.feature.is_none() {
             return;
         }
-
         let feature = self.feature.as_mut().unwrap();
-        let rebuild_geom = feature.modified();
+        let rebuild_geom = self.modified | feature.modified();
         if rebuild_geom {
             self.surface = Some(super::rebuild_geometry(
                 self.feature.as_mut().unwrap(),
                 self.factory,
-            ));
+            ));            
         }
         unsafe {
             target.FillGeometry(
@@ -68,5 +68,6 @@ impl<'a> River<'a> {
                 None,
             )
         };
+        self.modified = false;
     }
 }

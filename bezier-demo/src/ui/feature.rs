@@ -48,7 +48,6 @@ const RENDER_CTRL_HANDLE_RADIUS: f32 = 5.0;
 static REGISTER_FEATURE_WINDOW_CLASS: Once = Once::new();
 static FEATURE_WINDOW_CLASS_NAME: &HSTRING = w!("bytetrail.window.bezier-demo");
 
-#[derive(Debug)]
 pub(crate) struct RenderState<'a> {
     pub hover: Option<usize>,
     pub selected: Option<usize>,

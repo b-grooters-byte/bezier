@@ -20,13 +20,14 @@ pub(crate) enum BezierFeatureType {
     Railroad,
 }
 
-#[derive(Debug)]
 pub(crate) struct BezierFeature {
     resolution: f32,
     pub centerline: Vec<Bezier>,
     edge_curve: Vec<[Vec<Point>; 2]>,
     ctrl_points: usize,
     width: f32,
+    modified_func: Option<Box<dyn Fn(bool)>>,
+    draw_func: Option<Box<dyn Fn(&Self)>>,
 }
 
 impl BezierFeature {
@@ -52,6 +53,8 @@ impl BezierFeature {
             edge_curve,
             ctrl_points: 4,
             width: DEFAULT_WIDTH,
+            modified_func: None,
+            draw_func: None,
         };
         road.centerline.push(b);
         road
@@ -79,6 +82,8 @@ impl BezierFeature {
             edge_curve,
             ctrl_points: 4,
             width,
+            modified_func: None,
+            draw_func: None,
         };
         road.centerline.push(b);
         road
