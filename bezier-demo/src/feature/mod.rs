@@ -2,10 +2,7 @@ pub mod river;
 pub mod road;
 
 use geometry::{bezier::Bezier, Point};
-use windows::Win32::Graphics::Direct2D::{
-    Common::{D2D1_FIGURE_BEGIN_FILLED, D2D1_FIGURE_END_CLOSED, D2D1_FILL_MODE_WINDING},
-    ID2D1Factory1, ID2D1PathGeometry,
-};
+use windows::Win32::Graphics::Direct2D::ID2D1HwndRenderTarget;
 
 const DEFAULT_RESOLUTION: f32 = 0.025;
 const DERIVED_CTRL_POINT: usize = 3;
@@ -27,7 +24,7 @@ pub(crate) struct BezierFeature {
     ctrl_points: usize,
     width: f32,
     modified_func: Option<Box<dyn Fn(bool)>>,
-    draw_func: Option<Box<dyn Fn(&Self)>>,
+    draw_func: Option<Box<dyn FnMut(&mut Self, &ID2D1HwndRenderTarget)>>,
 }
 
 impl BezierFeature {
@@ -121,7 +118,7 @@ impl BezierFeature {
         for (idx, r) in recalculate.iter().enumerate() {
             if *r {
                 self.centerline[idx].curve();
-                self.calc_edge_curve(idx);
+                self.edge_curve[idx] = self.calc_edge_curve(idx);
             }
         }
         self.centerline
@@ -131,13 +128,14 @@ impl BezierFeature {
             .collect()
     }
 
+
     /// Gets the polygon path representing the surface of the road feature
     pub(crate) fn surface(&mut self) -> Vec<&geometry::Point> {
         let recalculate: Vec<bool> = self.centerline.iter().map(|b| b.modified()).collect();
         for (idx, r) in recalculate.iter().enumerate() {
             if *r {
                 self.centerline[idx].curve();
-                self.calc_edge_curve(idx);
+                self.edge_curve[idx] = self.calc_edge_curve(idx);
             }
         }
         let mut points_pi2: Vec<&geometry::Point> = self
@@ -186,9 +184,12 @@ impl BezierFeature {
         points
     }
 
-    fn calc_edge_curve(&mut self, idx: usize) {
+    fn calc_edge_curve(&mut self, idx: usize) -> [Vec<Point>; 2]{
         let tangent_points = self.tangent_points(idx);
-        let edge_curve = &mut self.edge_curve[idx];
+        let mut  edge_curve:[Vec<Point>; 2] = [
+            Vec::<Point>::new(),
+            Vec::<Point>::new(),
+        ];//&mut self.edge_curve[idx];
         edge_curve[0].clear();
         edge_curve[1].clear();
         let curve = self.centerline[idx].curve();
@@ -208,6 +209,7 @@ impl BezierFeature {
                 y: curve[idx].y + tan_x * width,
             });
         }
+        edge_curve
     }
 
     /// Adds a new Bézier segment to an existing feature. Control points 0 and
@@ -313,21 +315,3 @@ impl<'a> Iterator for ControlPointIterator<'a> {
     }
 }
 
-pub(crate) fn rebuild_geometry(
-    feature: &mut BezierFeature,
-    factory: &ID2D1Factory1,
-) -> ID2D1PathGeometry {
-    let surface_geom = unsafe { factory.CreatePathGeometry() }.unwrap();
-    let points = feature.surface();
-    let sink = unsafe { surface_geom.Open().unwrap() };
-    unsafe {
-        sink.SetFillMode(D2D1_FILL_MODE_WINDING);
-        sink.BeginFigure((*points[0]).into(), D2D1_FIGURE_BEGIN_FILLED);
-        for (_, point) in points.iter().enumerate().skip(1) {
-            sink.AddLine((**point).into());
-        }
-        sink.EndFigure(D2D1_FIGURE_END_CLOSED);
-        sink.Close().expect("unable to create geometry");
-    }
-    surface_geom
-}

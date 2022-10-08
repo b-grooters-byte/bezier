@@ -49,25 +49,25 @@ impl<'a> River<'a> {
         }
     }
 
-    pub(crate) fn draw(&mut self, target: ID2D1HwndRenderTarget) {
-        if self.feature.is_none() {
-            return;
-        }
-        let feature = self.feature.as_mut().unwrap();
-        let rebuild_geom = self.modified | feature.modified();
-        if rebuild_geom {
-            self.surface = Some(super::rebuild_geometry(
-                self.feature.as_mut().unwrap(),
-                self.factory,
-            ));            
-        }
-        unsafe {
-            target.FillGeometry(
-                self.surface.as_ref().unwrap(),
-                self.surface_brush.as_ref().unwrap(),
-                None,
-            )
-        };
-        self.modified = false;
-    }
+    // pub(crate) fn draw(&mut self, target: ID2D1HwndRenderTarget) {
+    //     if self.feature.is_none() {
+    //         return;
+    //     }
+    //     let feature = self.feature.as_mut().unwrap();
+    //     let rebuild_geom = self.modified | feature.modified();
+    //     if rebuild_geom {
+    //         self.surface = Some(super::rebuild_geometry(
+    //             self.feature.as_mut().unwrap(),
+    //             self.factory,
+    //         ));            
+    //     }
+    //     unsafe {
+    //         target.FillGeometry(
+    //             self.surface.as_ref().unwrap(),
+    //             self.surface_brush.as_ref().unwrap(),
+    //             None,
+    //         )
+    //     };
+    //     self.modified = false;
+    // }
 }

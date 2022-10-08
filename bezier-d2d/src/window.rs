@@ -4,7 +4,7 @@ use geometry::{bezier::Bezier, Point};
 use windows::{
     core::HRESULT,
     Win32::{
-        Foundation::RECT,
+        Foundation::{RECT,COLORREF},
         Graphics::{
             Direct2D::{
                 Common::{D2D1_COLOR_F, D2D_POINT_2F, D2D_SIZE_U},
@@ -103,7 +103,7 @@ impl Window {
             // use defaults for all other fields
             let class = WNDCLASSW {
                 lpfnWndProc: Some(Self::wnd_proc),
-                hbrBackground: unsafe { CreateSolidBrush(COLOR_WINDOW.into()) },
+                hbrBackground: unsafe { CreateSolidBrush(COLORREF(COLOR_WINDOW.0 as u32)) },
                 hInstance: instance,
                 style: CS_HREDRAW | CS_VREDRAW,
                 hCursor: unsafe { LoadCursorW(HINSTANCE(0), IDC_ARROW).ok().unwrap() },

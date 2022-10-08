@@ -8,9 +8,9 @@ use windows::{
         Foundation::{RECT, COLORREF},
         Graphics::{
             Direct2D::{
-                Common::{D2D1_COLOR_F, D2D_POINT_2F, D2D_SIZE_U},
+                Common::{D2D1_COLOR_F, D2D_POINT_2F, D2D_SIZE_U, D2D1_FILL_MODE_WINDING, D2D1_FIGURE_BEGIN_FILLED, D2D1_FIGURE_END_CLOSED},
                 ID2D1HwndRenderTarget, D2D1_ELLIPSE, D2D1_HWND_RENDER_TARGET_PROPERTIES,
-                D2D1_PRESENT_OPTIONS, D2D1_RENDER_TARGET_PROPERTIES,
+                D2D1_PRESENT_OPTIONS, D2D1_RENDER_TARGET_PROPERTIES, ID2D1PathGeometry,
             },
             Gdi::{InvalidateRect},
         },
@@ -51,32 +51,33 @@ static FEATURE_WINDOW_CLASS_NAME: &HSTRING = w!("bytetrail.window.bezier-demo");
 pub(crate) struct RenderState<'a> {
     pub hover: Option<usize>,
     pub selected: Option<usize>,
-    pub feature: BezierFeatureType,
-    pub road_visual: Road<'a>,
+    pub feature_type: BezierFeatureType,
+    pub feature: BezierFeature,
+    pub road_visual: Road<'a>
 }
 
 impl<'a> RenderState<'a> {
     pub(crate) fn new(factory: &'a ID2D1Factory1) -> Self {
-        let mut road = BezierFeature::new_with_attributes(30.0, false);
-        road.set_ctrl_point(0, Point { x: 10.0, y: 10.0 });
-        road.set_ctrl_point(1, Point { x: 100.0, y: 10.0 });
-        road.set_ctrl_point(2, Point { x: 100.0, y: 200.0 });
-        road.set_ctrl_point(3, Point { x: 200.0, y: 200.0 });
-        road.add_segment(Point { x: 300.0, y: 300.0 }, Point { x: 300.0, y: 400.0 });
+        let mut feature = BezierFeature::new_with_attributes(30.0, false);
+        feature.set_ctrl_point(0, Point { x: 10.0, y: 10.0 });
+        feature.set_ctrl_point(1, Point { x: 100.0, y: 10.0 });
+        feature.set_ctrl_point(2, Point { x: 100.0, y: 200.0 });
+        feature.set_ctrl_point(3, Point { x: 200.0, y: 200.0 });
+        feature.add_segment(Point { x: 300.0, y: 300.0 }, Point { x: 300.0, y: 400.0 });
 
         let mut road_visual = Road::new(factory);
-        road_visual.set_feature(road);
 
         RenderState {
             hover: None,
             selected: None,
-            feature: BezierFeatureType::Road,
+            feature_type: BezierFeatureType::Road,
+            feature,
             road_visual,
         }
     }
 
     fn in_control_point(&self, x: f32, y: f32) -> Option<usize> {
-        for (idx, ctrl) in self.road_visual.feature().unwrap().into_iter().enumerate() {
+        for (idx, ctrl) in self.feature.into_iter().enumerate() {
             if ctrl.dist_to_xy(x, y) <= RENDER_CTRL_HANDLE_RADIUS {
                 return Some(idx);
             }
@@ -160,7 +161,7 @@ impl<'a> FeatureWindow<'a> {
     }
 
     pub(crate) fn set_feature_type(&mut self, feature_type: BezierFeatureType) {
-        self.render_state.feature = feature_type;
+        self.render_state.feature_type = feature_type;
         unsafe {
             InvalidateRect(self.handle, None, false);
         }
@@ -219,7 +220,7 @@ impl<'a> FeatureWindow<'a> {
     }
 
     fn draw(&mut self) -> Result<()> {
-        let centerline = self.render_state.road_visual.feature_mut().unwrap().curve();
+        let centerline = self.render_state.feature.curve();
         let target = self.target.as_ref().unwrap();
         unsafe {
             target.Clear(Some(&D2D1_COLOR_F {
@@ -229,7 +230,7 @@ impl<'a> FeatureWindow<'a> {
                 a: 1.0,
             }));
         }
-        self.render_state.road_visual.draw(target);
+        draw_road(&mut self.render_state.road_visual, &mut self.render_state.feature, self.factory, target);
         direct2d::draw_line(
             target,
             &centerline,
@@ -244,9 +245,7 @@ impl<'a> FeatureWindow<'a> {
         };
         for (idx, ctrl) in self
             .render_state
-            .road_visual
-            .feature()
-            .unwrap()
+            .feature
             .into_iter()
             .enumerate()
         {
@@ -270,7 +269,7 @@ impl<'a> FeatureWindow<'a> {
                 );
             }
             let ctrl_brush = self.control_brush.as_ref().unwrap();
-            for segment in self.render_state.road_visual.feature().unwrap().segments() {
+            for segment in self.render_state.feature.segments() {
                 let ctrl_points = segment.ctrl_points();
                 unsafe {
                     target.DrawLine(
@@ -338,15 +337,11 @@ impl<'a> FeatureWindow<'a> {
                     if let Some(selected) = self.render_state.selected {
                         let current = self
                             .render_state
-                            .road_visual
-                            .feature()
-                            .unwrap()
+                            .feature
                             .ctrl_point(selected)
                             .unwrap();
                         self.render_state
-                            .road_visual
-                            .feature_mut()
-                            .unwrap()
+                        .feature
                             .set_ctrl_point(selected, Point { x, y });
                         let top = (current.y.min(y) - RENDER_CTRL_HANDLE_RADIUS) as i32;
                         let bottom = (current.y.max(y) + RENDER_CTRL_HANDLE_RADIUS) as i32;
@@ -369,9 +364,7 @@ impl<'a> FeatureWindow<'a> {
                 if let Some(idx) = idx {
                     let ctrl = &self
                         .render_state
-                        .road_visual
-                        .feature()
-                        .unwrap()
+                        .feature
                         .ctrl_point(idx)
                         .unwrap();
                     if self.render_state.hover.is_none() {
@@ -394,9 +387,7 @@ impl<'a> FeatureWindow<'a> {
                     if let Some(hover) = self.render_state.hover {
                         let ctrl = &self
                             .render_state
-                            .road_visual
-                            .feature()
-                            .unwrap()
+                            .feature
                             .ctrl_point(hover)
                             .unwrap();
                         // left the active control point boundary
@@ -454,4 +445,47 @@ fn mouse_position(lparam: LPARAM) -> (f32, f32) {
         (lparam.0 & 0x0000_FFFF) as f32,
         ((lparam.0 & 0xFFFF_0000) >> 16) as f32,
     )
+}
+
+
+fn draw_road(road: &mut Road, feature: &mut BezierFeature, factory: &ID2D1Factory1, target: &ID2D1HwndRenderTarget) {
+    let centerline = feature.curve();
+    let surface = Some(rebuild_geometry(
+            feature,
+            factory,
+        ));
+    unsafe {
+        target.FillGeometry(
+            surface.as_ref().unwrap(),
+            road.surface_brush.as_ref().unwrap(),
+            None,
+        )
+    };
+
+    direct2d::draw_line(
+        &target,
+        &centerline,
+        road.centerline_brush.as_ref().unwrap(),
+        &road.line_style,
+        2.0,
+    );
+}
+
+pub(crate) fn rebuild_geometry(
+    feature: &mut BezierFeature,
+    factory: &ID2D1Factory1,
+) -> ID2D1PathGeometry {
+    let surface_geom = unsafe { factory.CreatePathGeometry() }.unwrap();
+    let points = feature.surface();
+    let sink = unsafe { surface_geom.Open().unwrap() };
+    unsafe {
+        sink.SetFillMode(D2D1_FILL_MODE_WINDING);
+        sink.BeginFigure((*points[0]).into(), D2D1_FIGURE_BEGIN_FILLED);
+        for (_, point) in points.iter().enumerate().skip(1) {
+            sink.AddLine((**point).into());
+        }
+        sink.EndFigure(D2D1_FIGURE_END_CLOSED);
+        sink.Close().expect("unable to create geometry");
+    }
+    surface_geom
 }
